@@ -184,4 +184,25 @@ data class UnifiedTelemetryState(
     val best0To100KmhSec: Double? = null,
     val best100To200KmhSec: Double? = null,
     val best400mDragSec: Double? = null
-)
+) {
+    val nightModeTransitionFactor: Float
+        get() = nightModeBlendFactor
+
+    val simulatedFuelLevelPercent: Double
+        get() = (simulatedFuelLevelRatio * 100.0f).toDouble()
+
+    fun getMappedRpmForGauge(
+        gaugeRedlineRpm: Double,
+        gaugeMaxRpm: Double,
+        scalingMode: RpmScalingMode
+    ): Double {
+        val raw = when (scalingMode) {
+            RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE -> {
+                val safeBikeRed = kotlin.math.max(1000.0, bikeRedlineRpm)
+                actualEngineRpm * (gaugeRedlineRpm / safeBikeRed)
+            }
+            RpmScalingMode.MODE_B_NATIVE_1_TO_1 -> actualEngineRpm
+        }
+        return raw.coerceIn(0.0, kotlin.math.max(1000.0, gaugeMaxRpm))
+    }
+}

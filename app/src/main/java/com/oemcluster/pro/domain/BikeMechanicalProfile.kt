@@ -130,6 +130,18 @@ data class BikeMechanicalProfile(
     val id: String
         get() = profileId
 
+    val gearCount: Int
+        get() = gearRatios.size
+
+    val peakPowerHp: Double
+        get() = maxPowerHp
+
+    val peakTorqueNm: Double
+        get() = maxTorqueNm
+
+    val peakTorqueRpm: Double
+        get() = maxTorqueRpm
+
     val finalDriveRatio: Double
         get() = rearSprocketTeeth.toDouble() / max(1, frontSprocketTeeth).toDouble()
 

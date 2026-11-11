@@ -232,9 +232,9 @@ class AndroidHardwareSensorManager(
     ) {
         this.stationaryDeadbandKmh = stationaryDeadbandKmh.coerceIn(0.5, 8.0)
         this.maxAllowedGpsErrorMeters = maxAccuracyMeters.coerceIn(5.0f, 60.0f)
-        NativeTelemetryEngineBridge.nativeSetGpsFilterParameters(
-            stationaryDeadbandMs = this.stationaryDeadbandKmh / 3.6,
-            imuBlendingWeight = imuBlendingWeight.coerceIn(0.0, 1.0)
+        NativeTelemetryEngineBridge.applyGpsFilterSettings(
+            stationaryDeadbandKmh = this.stationaryDeadbandKmh,
+            imuSmoothingFactor = imuBlendingWeight.coerceIn(0.0, 1.0)
         )
     }
 

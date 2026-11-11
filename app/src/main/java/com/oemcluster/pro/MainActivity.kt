@@ -71,7 +71,6 @@ import com.oemcluster.pro.catalog.GaugeDisplayCategory
 import com.oemcluster.pro.catalog.OemGaugeCatalog105
 import com.oemcluster.pro.data.BikeDatabaseRepository
 import com.oemcluster.pro.domain.BikeMechanicalProfile
-import com.oemcluster.pro.domain.CylinderConfig
 import com.oemcluster.pro.domain.GearCalculationMode
 import com.oemcluster.pro.domain.IgnitionBootPhase
 import com.oemcluster.pro.domain.RpmScalingMode
@@ -309,13 +308,17 @@ fun MotoCrossClusterApp(
     }
 
     // Vites hesaplama modunu C++20 NDK motoruna gönder
-    LaunchedEffect(gearCalculationMode, manualGearSelection) {
+    LaunchedEffect(gearCalculationMode, manualGearSelection, simClutchIn) {
         val overrideGear = when (gearCalculationMode) {
             GearCalculationMode.AUTO_KINEMATIC_ECU -> -1
             GearCalculationMode.SEMI_AUTO_WITH_BUTTONS,
             GearCalculationMode.MANUAL_GEAR_LOCK -> manualGearSelection
         }
-        NativeTelemetryEngineBridge.nativeSetManualGearOverride(overrideGear)
+        NativeTelemetryEngineBridge.applyManualGearOverride(
+            forcedGear = overrideGear,
+            clutchPulled = simClutchIn,
+            throttleOverrideRpm = -1.0
+        )
     }
 
     // 120 Hz Render ve Telemetri Döngüsü
@@ -332,7 +335,11 @@ fun MotoCrossClusterApp(
                     ((frameNanos - lastUserInteractionNanos) < 6_000_000_000L)
 
                 if (!simActive) {
-                    NativeTelemetryEngineBridge.tick120HzFrame(frameNanos)
+                    NativeTelemetryEngineBridge.pollFrame120Hz(
+                        timestampNanos = frameNanos,
+                        activeProfile = activeBike,
+                        wheelieDisplayMode = wheelieDisplayMode
+                    )
                 } else {
                     // Canlı Sürüş Simülatörü: Hızdan otomatik vites ve gerçek devir hesaplar
                     val trueSpdMs = simSpeedKmh / 3.6
@@ -345,7 +352,7 @@ fun MotoCrossClusterApp(
                     if (gearCalculationMode == GearCalculationMode.AUTO_KINEMATIC_ECU && simSpeedKmh >= 2f) {
                         var bestG = 1
                         for (g in 1..activeBike.gearCount) {
-                            val rpmAtG = activeBike.computeRpmAtSpeedKmh(simSpeedKmh.toDouble(), g)
+                            val rpmAtG = activeBike.computeRpmAtSpeedKmh(g, simSpeedKmh.toDouble())
                             bestG = g
                             if (rpmAtG <= activeBike.redlineRpm * 0.86) break
                         }
@@ -409,7 +416,7 @@ fun MotoCrossClusterApp(
                     val trqNm = activeBike.interpolateEngineTorqueNm(bounceRpm)
                     val wheelHp = ((trqNm * bounceRpm * 2.0 * PI) / 60000.0) * 1.341 * 0.90
 
-                    NativeTelemetryEngineBridge.publishTelemetryState(
+                    NativeTelemetryEngineBridge.updateDirectSimulatorState(
                         UnifiedTelemetryState(
                             timestampNanos = frameNanos,
                             activeBikeProfileId = activeBike.profileId,
@@ -445,7 +452,7 @@ fun MotoCrossClusterApp(
                             effectiveTireRadiusMm = rEffMm,
                             estimatedWheelHorsepower = wheelHp,
                             estimatedWheelTorqueNm = trqNm * activeBike.primaryReductionRatio * activeBike.finalDriveRatio * gearRatio * 0.92,
-                            nightModeTransitionFactor = if (themeOverrideMode == 1) 0f else 1f,
+                            nightModeBlendFactor = if (themeOverrideMode == 1) 0f else 1f,
                             ignitionBootPhase = IgnitionBootPhase.RUNNING_LIVE,
                             isWheelieActive = isWheelieNow,
                             isWheelieSummaryVisible = isWheelieNow || simWheelieHoldSec > 0.0,
@@ -980,22 +987,22 @@ private fun GarageProfileStudioTab(
 
     // Kolay Mod: 1..6. Vites Maksimum Hızları (km/h)
     var gear1MaxKmh by remember(activeBike) {
-        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 1).roundToInt().toString())
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(1, activeBike.redlineRpm).roundToInt().toString())
     }
     var gear2MaxKmh by remember(activeBike) {
-        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 2).roundToInt().toString())
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(2, activeBike.redlineRpm).roundToInt().toString())
     }
     var gear3MaxKmh by remember(activeBike) {
-        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 3).roundToInt().toString())
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(3, activeBike.redlineRpm).roundToInt().toString())
     }
     var gear4MaxKmh by remember(activeBike) {
-        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 4).roundToInt().toString())
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(4, activeBike.redlineRpm).roundToInt().toString())
     }
     var gear5MaxKmh by remember(activeBike) {
-        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 5).roundToInt().toString())
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(5, activeBike.redlineRpm).roundToInt().toString())
     }
     var gear6MaxKmh by remember(activeBike) {
-        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 6).roundToInt().toString())
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(6, activeBike.redlineRpm).roundToInt().toString())
     }
 
     // Mühendislik Modu: Ön/Arka Dişli, Primer Oran ve 1..6. Vites Şanzıman Oranları
@@ -1120,7 +1127,7 @@ private fun GarageProfileStudioTab(
                                 )
                             }
                             Text(
-                                text = "${bike.displacementCc} cc  •  Dişli: ${bike.frontSprocketTeeth}/${bike.rearSprocketTeeth}T  •  Lastik: ${bike.rearTire.toSpecString()}  •  6.Vites: ${bike.computeSpeedKmhAtRpm(bike.redlineRpm, bike.gearCount).roundToInt()} km/h",
+                                text = "${bike.displacementCc} cc  •  Dişli: ${bike.frontSprocketTeeth}/${bike.rearSprocketTeeth}T  •  Lastik: ${bike.rearTire.toSpecString()}  •  6.Vites: ${bike.computeSpeedKmhAtRpm(bike.gearCount, bike.redlineRpm).roundToInt()} km/h",
                                 color = Color(0xFF90A4AE),
                                 fontSize = 11.sp
                             )
@@ -1253,7 +1260,8 @@ private fun GarageProfileStudioTab(
                         fontWeight = FontWeight.Bold
                     )
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(BikeDatabaseRepository.COMMON_REAR_TIRES) { preset ->
+                        items(TireSpecification.COMMON_REAR_TIRES) { tireObj ->
+                            val preset = tireObj.toSpecString()
                             Surface(
                                 color = if (rearTireSpecText == preset) Color(0xFFFF6600) else Color(0xFF1E2533),
                                 shape = RoundedCornerShape(10.dp),
@@ -1337,7 +1345,8 @@ private fun GarageProfileStudioTab(
                                         val redRpm = redlineRpmText.toDoubleOrNull()?.coerceIn(4000.0, 20000.0) ?: activeBike.redlineRpm
                                         val limRpm = limiterRpmText.toDoubleOrNull()?.coerceIn(redRpm, 21000.0) ?: (redRpm + 500.0)
                                         val idleRpm = idleRpmText.toDoubleOrNull()?.coerceIn(800.0, 3000.0) ?: activeBike.idleRpm
-                                        val tire = TireSpecification.fromSpecString(rearTireSpecText, isRear = true)
+                                        val tire = TireSpecification.parse(rearTireSpecText)
+                                        val tempBike = activeBike.copy(rearTire = tire, redlineRpm = redRpm)
                                         val speeds = listOf(
                                             gear1MaxKmh.toDoubleOrNull() ?: 60.0,
                                             gear2MaxKmh.toDoubleOrNull() ?: 90.0,
@@ -1347,29 +1356,24 @@ private fun GarageProfileStudioTab(
                                             gear6MaxKmh.toDoubleOrNull() ?: 195.0
                                         )
                                         val computedRatios = speeds.map { spd ->
-                                            BikeMechanicalProfile.computeGearRatioFromTopSpeedKmh(
-                                                topSpeedKmh = spd,
-                                                atRpm = redRpm,
-                                                primaryReduction = activeBike.primaryReductionRatio,
-                                                frontTeeth = activeBike.frontSprocketTeeth,
-                                                rearTeeth = activeBike.rearSprocketTeeth,
-                                                rearTire = tire
+                                            tempBike.computeGearRatioFromTopSpeedKmh(
+                                                targetSpeedKmh = spd,
+                                                atRpm = redRpm
                                             )
                                         }
                                         val updated = activeBike.copy(
                                             brand = customBrand.ifBlank { activeBike.brand },
                                             modelName = customModel.ifBlank { activeBike.modelName },
                                             displacementCc = customCc.toIntOrNull() ?: activeBike.displacementCc,
-                                            gearCount = customGearCount,
                                             gearRatios = computedRatios,
                                             rearTire = tire,
                                             idleRpm = idleRpm,
                                             redlineRpm = redRpm,
                                             revLimiterRpm = limRpm,
-                                            peakPowerHp = peakHpText.toDoubleOrNull() ?: activeBike.peakPowerHp,
-                                            peakTorqueNm = peakTrqText.toDoubleOrNull() ?: activeBike.peakTorqueNm
+                                            maxPowerHp = peakHpText.toDoubleOrNull() ?: activeBike.maxPowerHp,
+                                            maxTorqueNm = peakTrqText.toDoubleOrNull() ?: activeBike.maxTorqueNm
                                         )
-                                        BikeDatabaseRepository.saveOrUpdateCustomProfile(updated)
+                                        BikeDatabaseRepository.upsertBikeProfile(updated, setAsActive = true)
                                         NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(updated)
                                         statusBanner = "✅ Vites hızlarından şanzıman oranları hesaplandı ve C++20 ECU'ya kaydedildi!"
                                     },
@@ -1455,12 +1459,12 @@ private fun GarageProfileStudioTab(
                                                 rearSprocketTeeth = rTeeth,
                                                 primaryReductionRatio = prim,
                                                 gearRatios = ratios,
-                                                rearTire = TireSpecification.fromSpecString(rearTireSpecText, isRear = true),
+                                                rearTire = TireSpecification.parse(rearTireSpecText),
                                                 idleRpm = idleRpmText.toDoubleOrNull() ?: activeBike.idleRpm,
                                                 redlineRpm = redlineRpmText.toDoubleOrNull() ?: activeBike.redlineRpm,
                                                 revLimiterRpm = limiterRpmText.toDoubleOrNull() ?: activeBike.revLimiterRpm
                                             )
-                                            BikeDatabaseRepository.saveOrUpdateCustomProfile(updated)
+                                            BikeDatabaseRepository.upsertBikeProfile(updated, setAsActive = true)
                                             NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(updated)
                                             statusBanner = "✅ Dişli ve şanzıman oranları C++20 ECU'ya kaydedildi!"
                                         },
@@ -1480,11 +1484,11 @@ private fun GarageProfileStudioTab(
                                                 displacementCc = customCc.toIntOrNull() ?: activeBike.displacementCc,
                                                 frontSprocketTeeth = frontTeethText.toIntOrNull() ?: activeBike.frontSprocketTeeth,
                                                 rearSprocketTeeth = rearTeethText.toIntOrNull() ?: activeBike.rearSprocketTeeth,
-                                                rearTire = TireSpecification.fromSpecString(rearTireSpecText, isRear = true),
+                                                rearTire = TireSpecification.parse(rearTireSpecText),
                                                 redlineRpm = redlineRpmText.toDoubleOrNull() ?: activeBike.redlineRpm,
                                                 revLimiterRpm = limiterRpmText.toDoubleOrNull() ?: activeBike.revLimiterRpm
                                             )
-                                            BikeDatabaseRepository.saveOrUpdateCustomProfile(newProfile)
+                                            BikeDatabaseRepository.upsertBikeProfile(newProfile, setAsActive = true)
                                             NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(newProfile)
                                             statusBanner = "✅ '${newProfile.brand} ${newProfile.modelName}' garaja yeni motor olarak eklendi!"
                                         },
@@ -1516,9 +1520,9 @@ private fun GarageProfileStudioTab(
                                 fontSize = 13.sp
                             )
                             for (g in 1..activeBike.gearCount) {
-                                val spd5k = activeBike.computeSpeedKmhAtRpm(5000.0, g).roundToInt()
-                                val spdTrq = activeBike.computeSpeedKmhAtRpm(activeBike.peakTorqueRpm, g).roundToInt()
-                                val spdRed = activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, g).roundToInt()
+                                val spd5k = activeBike.computeSpeedKmhAtRpm(g, 5000.0).roundToInt()
+                                val spdTrq = activeBike.computeSpeedKmhAtRpm(g, activeBike.peakTorqueRpm).roundToInt()
+                                val spdRed = activeBike.computeSpeedKmhAtRpm(g, activeBike.redlineRpm).roundToInt()
                                 val ratioStr = String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(g - 1) { 1.0 })
                                 Text(
                                     text = "$g. Vites (Oran $ratioStr):   5000 RPM → $spd5k km/h   •   Max Tork → $spdTrq km/h   •   Redline → $spdRed km/h",
@@ -1867,7 +1871,7 @@ private fun AdvancedSettingsTab(
                         onCheckedChange = {
                             onRpmScalingModeChange(
                                 if (it) RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE
-                                else RpmScalingMode.MODE_B_ABSOLUTE_1_TO_1
+                                else RpmScalingMode.MODE_B_NATIVE_1_TO_1
                             )
                         }
                     )
@@ -1996,7 +2000,7 @@ private fun AdvancedSettingsTab(
                                 containerColor = if (language == lang) Color(0xFFFF6600) else Color(0xFF232936)
                             )
                         ) {
-                            Text("${lang.code.uppercase(Locale.ROOT)} • ${lang.nativeDisplayName}", fontSize = 12.sp)
+                            Text("${lang.flagEmoji} ${lang.code.uppercase(Locale.ROOT)} • ${lang.nativeName}", fontSize = 12.sp)
                         }
                     }
                 }

@@ -362,8 +362,10 @@ private fun DrawScope.drawUpperShiftLedsAndTelltaleBay(
 
     // Sol OEM İkaz Lambaları: Sol Sinyal [◄], Boş Vites [N], Uzun Far [HI], ABS
     val leftLampsX = w * 0.15f
+    val isSweepPhase = telemetry.ignitionBootPhase == IgnitionBootPhase.NEEDLE_SWEEP_UP ||
+        telemetry.ignitionBootPhase == IgnitionBootPhase.NEEDLE_SWEEP_RETURN
     // [N] Boş Vites Mücevheri
-    val nActive = telemetry.isNeutral || telemetry.ignitionBootPhase == IgnitionBootPhase.NEEDLE_AND_BAR_SWEEP
+    val nActive = telemetry.isNeutral || isSweepPhase
     drawTelltaleLamp(
         x = leftLampsX,
         y = topY,
@@ -374,7 +376,7 @@ private fun DrawScope.drawUpperShiftLedsAndTelltaleBay(
         activeColor = Color(0xFF00E676)
     )
     // [ABS] Lambası (Hız < 5 km/h iken veya Sweep'te yanar, hareket halinde söner)
-    val absActive = telemetry.trueSpeedKmh < 4.0 || telemetry.ignitionBootPhase == IgnitionBootPhase.NEEDLE_AND_BAR_SWEEP
+    val absActive = telemetry.trueSpeedKmh < 4.0 || isSweepPhase
     drawTelltaleLamp(
         x = leftLampsX + 48f,
         y = topY,
@@ -388,7 +390,7 @@ private fun DrawScope.drawUpperShiftLedsAndTelltaleBay(
     val tcActive = telemetry.isWheelieActive ||
         abs(telemetry.leanAngleDeg) > 34.0 ||
         telemetry.shiftLightState == ShiftLightState.OVER_REV_LIMITER ||
-        telemetry.ignitionBootPhase == IgnitionBootPhase.NEEDLE_AND_BAR_SWEEP
+        isSweepPhase
     drawTelltaleLamp(
         x = leftLampsX + 102f,
         y = topY,
@@ -401,7 +403,7 @@ private fun DrawScope.drawUpperShiftLedsAndTelltaleBay(
 
     // Sağ OEM İkaz Lambaları: OIL, MIL, GPS Durumu, Saat
     val rightLampsX = w * 0.72f
-    val oilOrMilActive = telemetry.ignitionBootPhase == IgnitionBootPhase.NEEDLE_AND_BAR_SWEEP
+    val oilOrMilActive = isSweepPhase
     drawTelltaleLamp(
         x = rightLampsX,
         y = topY,
@@ -634,7 +636,7 @@ private fun DrawScope.drawKtmBmwBoomerangCockpit(
     val cellW = w * 0.16f
     val cellH = h * 0.20f
 
-    drawTelemetryInfoCell(gridLeft, gridTop, cellW, cellH, "COOLANT", "${telemetry.simulatedCoolantTempC.roundToInt()}°C", fgColor, accentColor)
+    drawTelemetryInfoCell(gridLeft, gridTop, cellW, cellH, "COOLANT", "${telemetry.simulatedCoolantTempC}°C", fgColor, accentColor)
     drawTelemetryInfoCell(gridLeft + cellW + 10f, gridTop, cellW, cellH, "BATTERY", "14.2 V", fgColor, accentColor)
     drawTelemetryInfoCell(
         gridLeft,
@@ -1111,7 +1113,7 @@ private fun DrawScope.drawCircularRingTurbineCockpit(
     // 3. Sağ Kanat: Telemetri Kartları (Eğim Açısı, Hararet, Güç)
     val rightX = w * 0.72f + shiftOffset.x
     drawTelemetryInfoCell(rightX, h * 0.26f + shiftOffset.y, w * 0.22f, h * 0.17f, "LEAN ANGLE", "${abs(telemetry.leanAngleDeg).roundToInt()}°", fgColor, accentColor)
-    drawTelemetryInfoCell(rightX, h * 0.46f + shiftOffset.y, w * 0.22f, h * 0.17f, "COOLANT TEMP", "${telemetry.simulatedCoolantTempC.roundToInt()}°C", fgColor, accentColor)
+    drawTelemetryInfoCell(rightX, h * 0.46f + shiftOffset.y, w * 0.22f, h * 0.17f, "COOLANT TEMP", "${telemetry.simulatedCoolantTempC}°C", fgColor, accentColor)
     drawTelemetryInfoCell(rightX, h * 0.66f + shiftOffset.y, w * 0.22f, h * 0.17f, "OUTPUT", "${telemetry.estimatedWheelHorsepower.roundToInt()} HP", fgColor, accentColor)
 }
 
@@ -1359,7 +1361,7 @@ private fun DrawScope.drawSupersportCentralAnalogHybridCockpit(
 
     // LCD Alt Telemetri: Hararet, Gerçek RPM ve Yakıt Barı
     drawNativeText(
-        text = "TEMP: ${telemetry.simulatedCoolantTempC.roundToInt()}°C   •   RPM: ${telemetry.actualEngineRpm.roundToInt()}",
+        text = "TEMP: ${telemetry.simulatedCoolantTempC}°C   •   RPM: ${telemetry.actualEngineRpm.roundToInt()}",
         x = lcdLeft + 18f,
         y = lcdTop + lcdH - 46f,
         textSizePx = 16f,
@@ -1803,7 +1805,7 @@ private fun DrawScope.drawPolarizedSegmentLcdCockpit(
     val leftX = w * 0.08f + shiftOffset.x
     drawNativeText("FUEL", leftX, h * 0.44f + shiftOffset.y, 16f, fgColor, Paint.Align.LEFT, true)
     drawLcdSegmentedBar(leftX, h * 0.46f + shiftOffset.y, w * 0.18f, 20f, 8, (telemetry.simulatedFuelLevelPercent / 100.0).toFloat(), fgColor)
-    drawNativeText("TEMP ${telemetry.simulatedCoolantTempC.roundToInt()}°C", leftX, h * 0.60f + shiftOffset.y, 18f, fgColor, Paint.Align.LEFT, true)
+    drawNativeText("TEMP ${telemetry.simulatedCoolantTempC}°C", leftX, h * 0.60f + shiftOffset.y, 18f, fgColor, Paint.Align.LEFT, true)
     drawLcdSegmentedBar(leftX, h * 0.62f + shiftOffset.y, w * 0.18f, 20f, 8, 0.62f, fgColor)
 
     // 3. Merkez 7-Segment Hız Okuması (Gerçek `888` Hayalet Katmanlı!)
@@ -1945,7 +1947,7 @@ private fun DrawScope.drawTouringPanoramicSplitCockpit(
 
     drawNativeText("TOURING TELEMETRY", cardLeft + 18f, cardTop + 30f, 16f, accentColor, Paint.Align.LEFT, true)
     drawNativeText("TPMS FRONT: 2.5 BAR  •  REAR: 2.9 BAR", cardLeft + 18f, cardTop + 66f, 15f, fgColor, Paint.Align.LEFT, true)
-    drawNativeText("COOLANT: ${telemetry.simulatedCoolantTempC.roundToInt()}°C  •  RANGE: 315 KM", cardLeft + 18f, cardTop + 102f, 15f, fgColor, Paint.Align.LEFT, true)
+    drawNativeText("COOLANT: ${telemetry.simulatedCoolantTempC}°C  •  RANGE: 315 KM", cardLeft + 18f, cardTop + 102f, 15f, fgColor, Paint.Align.LEFT, true)
     drawNativeText("ENGINE: ${telemetry.actualEngineRpm.roundToInt()} RPM", cardLeft + 18f, cardTop + 138f, 18f, accentColor, Paint.Align.LEFT, true)
     drawNativeText("POWER: ${telemetry.estimatedWheelHorsepower.roundToInt()} HP / ${telemetry.estimatedWheelTorqueNm.roundToInt()} Nm", cardLeft + 18f, cardTop + 174f, 15f, fgColor, Paint.Align.LEFT, true)
 }
@@ -2257,7 +2259,7 @@ private fun DrawScope.drawBottomTelemetryStatusStrip(
 
     // Sağ: Eğim Açısı, Hararet ve Saat
     drawNativeText(
-        text = "LEAN ${abs(telemetry.leanAngleDeg).roundToInt()}°  •  ${telemetry.simulatedCoolantTempC.roundToInt()}°C  •  $timeStr",
+        text = "LEAN ${abs(telemetry.leanAngleDeg).roundToInt()}°  •  ${telemetry.simulatedCoolantTempC}°C  •  $timeStr",
         x = w * 0.96f,
         y = stripY,
         textSizePx = 15f,
@@ -2273,8 +2275,8 @@ private fun DrawScope.drawNativeText(
     y: Float,
     textSizePx: Float,
     color: Color,
-    align: Paint.Align.CENTER,
-    bold: Boolean
+    align: Paint.Align = Paint.Align.CENTER,
+    bold: Boolean = true
 ) {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = color.toArgb()
