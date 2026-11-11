@@ -12,9 +12,7 @@ namespace {
 constexpr jsize TELEMETRY_PACK_SIZE = 39;
 
 struct NativeEngineInstance {
-    // IMU/EKF/ECU kilidi (400 Hz sensör iş parçacığı + 120 Hz render iş parçacığı)
     std::mutex mutex;
-    // Akustik kilidi ayrı: 4096-nokta FFT birkaç ms sürer ve 400 Hz IMU akışını bloklamamalı
     std::mutex acousticMutex;
 
     oemcluster::kalman::MountCalibrator mountCalibrator;
@@ -22,7 +20,6 @@ struct NativeEngineInstance {
     oemcluster::acoustic::AcousticFftRpmDetector acousticDetector;
     oemcluster::physics::VirtualEcuPhysicsEngine virtualEcu;
 
-    // Akustik sonuçlar kilitsiz okunur
     std::atomic<double> acousticRpm{0.0};
     std::atomic<double> acousticConfidence{0.0};
 
@@ -30,7 +27,6 @@ struct NativeEngineInstance {
     int64_t lastImuTimestampNanos{0};
     int64_t lastPhysicsTimestampNanos{0};
 
-    // Hız kalibrasyonu ayarları (Bölüm 2.3)
     bool useOemSpeedBiasMode{false};
     double oemSpeedBiasRatio{0.05};
     bool enableJapan299Lock{false};
@@ -86,9 +82,13 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeConfigureBikeP
 
     if (gearRatiosArray != nullptr) {
         const jsize len = std::min<jsize>(6, env->GetArrayLength(gearRatiosArray));
+        cfg.gearCount = std::max<int>(1, static_cast<int>(len));
         jdouble* elems = env->GetDoubleArrayElements(gearRatiosArray, nullptr);
         for (jsize i = 0; i < len; ++i) {
             cfg.gearRatios[i] = elems[i];
+        }
+        for (jsize i = len; i < 6; ++i) {
+            cfg.gearRatios[i] = (len > 0) ? elems[len - 1] : 1.0;
         }
         env->ReleaseDoubleArrayElements(gearRatiosArray, elems, JNI_ABORT);
     }
@@ -161,6 +161,33 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeConfigureCalib
 }
 
 JNIEXPORT void JNICALL
+Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeSetGpsFilterParameters(
+    JNIEnv* /*env*/,
+    jobject /*thiz*/,
+    jdouble stationaryDeadbandKmh,
+    jdouble imuSmoothingFactor
+) {
+    std::scoped_lock lock(g_engine.mutex);
+    g_engine.ekf15.setGpsFilterParameters(stationaryDeadbandKmh, imuSmoothingFactor);
+}
+
+JNIEXPORT void JNICALL
+Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeSetManualGearOverride(
+    JNIEnv* /*env*/,
+    jobject /*thiz*/,
+    jint forcedGear,
+    jboolean clutchPulled,
+    jdouble throttleOverrideRpm
+) {
+    std::scoped_lock lock(g_engine.mutex);
+    g_engine.virtualEcu.forceManualGearOrClutch(
+        forcedGear,
+        static_cast<bool>(clutchPulled),
+        throttleOverrideRpm
+    );
+}
+
+JNIEXPORT void JNICALL
 Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeTriggerZeroLeanCalibrationNow(
     JNIEnv* /*env*/,
     jobject /*thiz*/
@@ -197,13 +224,12 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeIngestImu400Hz
     const oemcluster::math::Vec3d gyroPhone{gxPhone, gyPhone, gzPhone};
     g_engine.lastRawPhoneAccel = accelPhone;
 
-    double dtSec = 0.0025; // 400 Hz varsayılan (2.5 ms)
+    double dtSec = 0.0025;
     if (g_engine.lastImuTimestampNanos > 0 && timestampNanos > g_engine.lastImuTimestampNanos) {
         dtSec = static_cast<double>(timestampNanos - g_engine.lastImuTimestampNanos) * 1e-9;
     }
     g_engine.lastImuTimestampNanos = timestampNanos;
 
-    // 1. 3D Gidon/Tutucu Kalibrasyon Matrisini güncelle ve şasi eksenine çevir
     g_engine.mountCalibrator.ingestImuSample(
         accelPhone,
         gyroPhone,
@@ -214,7 +240,6 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeIngestImu400Hz
     const oemcluster::math::Vec3d gyroBike =
         g_engine.mountCalibrator.transformGyroToBikeFrame(gyroPhone);
 
-    // 2. 15-Durumlu EKF 400 Hz Tahmin Adımı
     g_engine.ekf15.predict400Hz(timestampNanos, dtSec, accelBike, gyroBike);
 }
 
@@ -265,7 +290,6 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeSetAcousticEna
     jobject /*thiz*/,
     jboolean enabled
 ) {
-    // Mikrofon kapatıldığında eski akustik sonuç vites/debriyaj kararlarını etkilemesin
     if (!enabled) {
         g_engine.acousticRpm.store(0.0, std::memory_order_relaxed);
         g_engine.acousticConfidence.store(0.0, std::memory_order_relaxed);
@@ -326,8 +350,6 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeStepAndReadTel
         is299Locked
     );
 
-    // 38-elemanlı sıkıştırılmış double dizisi üzerinden sıfır-tahsisli (zero-allocation) JNI aktarımı.
-    // İndeks düzeni NativeTelemetryEngineBridge.kt içindeki okuma ile birebir aynı olmalıdır.
     jdouble pack[TELEMETRY_PACK_SIZE];
     pack[0]  = trueSpeedMs;
     pack[1]  = trueSpeedMs * 3.6;

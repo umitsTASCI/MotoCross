@@ -8,6 +8,9 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,10 +26,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,6 +70,9 @@ import com.oemcluster.pro.catalog.DeclarativeGaugeSpec
 import com.oemcluster.pro.catalog.GaugeDisplayCategory
 import com.oemcluster.pro.catalog.OemGaugeCatalog105
 import com.oemcluster.pro.data.BikeDatabaseRepository
+import com.oemcluster.pro.domain.BikeMechanicalProfile
+import com.oemcluster.pro.domain.CylinderConfig
+import com.oemcluster.pro.domain.GearCalculationMode
 import com.oemcluster.pro.domain.IgnitionBootPhase
 import com.oemcluster.pro.domain.RpmScalingMode
 import com.oemcluster.pro.domain.ShiftLightState
@@ -82,7 +91,6 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -93,7 +101,9 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
-        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
             hardwareSensorManager.startGnssUpdates()
         }
     }
@@ -134,6 +144,13 @@ class MainActivity : ComponentActivity() {
                     },
                     onThemeModeChanged = { mode ->
                         hardwareSensorManager.setThemeOverrideMode(mode)
+                    },
+                    onGpsFilterChanged = { deadbandKmh, maxAccuracyM, imuWeight ->
+                        hardwareSensorManager.updateGpsFilterConfig(
+                            stationaryDeadbandKmh = deadbandKmh.toDouble(),
+                            maxAccuracyMeters = maxAccuracyM,
+                            imuBlendingWeight = imuWeight.toDouble()
+                        )
                     }
                 )
             }
@@ -181,7 +198,8 @@ class MainActivity : ComponentActivity() {
 fun MotoCrossClusterApp(
     onZeroCalibrateNow: () -> Unit,
     onToggleAcousticMic: (Boolean) -> Unit,
-    onThemeModeChanged: (Int) -> Unit
+    onThemeModeChanged: (Int) -> Unit,
+    onGpsFilterChanged: (Float, Float, Float) -> Unit
 ) {
     val language by LocalizationManager.currentLanguage.collectAsState()
     val activeBike by BikeDatabaseRepository.activeBikeProfile.collectAsState()
@@ -189,7 +207,7 @@ fun MotoCrossClusterApp(
     val nativeTelemetry by NativeTelemetryEngineBridge.telemetryState.collectAsState()
 
     // Seçili Gösterge (105 OEM Model içinden) ve Alt Modu
-    var selectedGaugeIndex by remember { mutableIntStateOf(0) } // Varsayılan: #1 KTM 390 Duke
+    var selectedGaugeIndex by remember { mutableIntStateOf(0) } // #1 KTM 390 Duke
     var selectedSubModeIndex by remember { mutableIntStateOf(0) }
     val favoriteSkinIds = remember {
         mutableStateListOf(
@@ -199,19 +217,33 @@ fun MotoCrossClusterApp(
             "ducati_panigale_v4_evo",
             "suzuki_hayabusa_gen3",
             "honda_cbr1000rrr_sp",
-            "kawasaki_zx10r_2021"
+            "kawasaki_zx10r_2021",
+            "yamaha_yzf_r6_rj27"
         )
     }
 
-    // Kontrol Merkezi Modal Durumu
+    // Kontrol Merkezi Modal Durumu ve Otomatik Gizlenen Üst Kokpit Çubuğu
     var isControlCenterOpen by remember { mutableStateOf(false) }
     var activeMenuTab by remember { mutableIntStateOf(0) } // 0: Garajım, 1: 105 Galeri, 2: Ayarlar, 3: Yol Bilgisayarı & Drag
+    var autoHideCockpitHud by remember { mutableStateOf(true) }
+    var lastUserInteractionNanos by remember { mutableLongStateOf(System.nanoTime()) }
+    var hudVisible by remember { mutableStateOf(true) }
 
-    // Kalibrasyon, Shift-Light, Teker Ölçer ve Ekran Ayarları
+    // Altın Kural Kilidi vs Kadranla Motoru Eşleştirme
+    var syncBikeProfileWithGauge by remember { mutableStateOf(false) }
+
+    // GPS, ECU, Vites ve Kalibrasyon Ayarları
     var useMph by remember { mutableStateOf(false) }
     var useOemSpeedBias by remember { mutableStateOf(false) }
     var oemBiasRatio by remember { mutableFloatStateOf(0.05f) }
     var japan299Lock by remember { mutableStateOf(false) }
+    var stationaryDeadbandKmh by remember { mutableFloatStateOf(2.2f) }
+    var maxGpsAccuracyMeters by remember { mutableFloatStateOf(22f) }
+    var imuBlendingWeight by remember { mutableFloatStateOf(0.35f) }
+
+    var gearCalculationMode by remember { mutableStateOf(GearCalculationMode.AUTO_KINEMATIC_ECU) }
+    var manualGearSelection by remember { mutableIntStateOf(1) }
+
     var rpmScalingMode by remember { mutableStateOf(RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE) }
     var wheelieDisplayMode by remember { mutableStateOf(WheelieGaugeDisplayMode.SMART_AUTO_POPUP) }
     var autoOptimalShift by remember { mutableStateOf(true) }
@@ -223,7 +255,7 @@ fun MotoCrossClusterApp(
     var chromaKeyGreen by remember { mutableStateOf(false) }
     var oledPixelShiftEnabled by remember { mutableStateOf(true) }
 
-    // Masaüstü / Emülatör Testi için Canlı Sürüş & Teker Simülatörü (İsteğe bağlı açılır çubuk)
+    // Canlı Sürüş & Teker Simülatörü (İsteğe Bağlı)
     var simDrawerOpen by remember { mutableStateOf(false) }
     var simActive by remember { mutableStateOf(false) }
     var simSpeedKmh by remember { mutableFloatStateOf(0f) }
@@ -248,7 +280,7 @@ fun MotoCrossClusterApp(
     var simWheelieHoldSec by remember { mutableDoubleStateOf(0.0) }
     var lastFrameNanos by remember { mutableLongStateOf(0L) }
 
-    // 120 Hz Render ve Telemetri Döngüsü
+    // Aktif motor ve kalibrasyon ayarlarını C++20 NDK motoruna senkronize et
     LaunchedEffect(
         activeBike,
         useOemSpeedBias,
@@ -271,6 +303,22 @@ fun MotoCrossClusterApp(
         )
     }
 
+    // GPS filtre parametrelerini güncelle
+    LaunchedEffect(stationaryDeadbandKmh, maxGpsAccuracyMeters, imuBlendingWeight) {
+        onGpsFilterChanged(stationaryDeadbandKmh, maxGpsAccuracyMeters, imuBlendingWeight)
+    }
+
+    // Vites hesaplama modunu C++20 NDK motoruna gönder
+    LaunchedEffect(gearCalculationMode, manualGearSelection) {
+        val overrideGear = when (gearCalculationMode) {
+            GearCalculationMode.AUTO_KINEMATIC_ECU -> -1
+            GearCalculationMode.SEMI_AUTO_WITH_BUTTONS,
+            GearCalculationMode.MANUAL_GEAR_LOCK -> manualGearSelection
+        }
+        NativeTelemetryEngineBridge.nativeSetManualGearOverride(overrideGear)
+    }
+
+    // 120 Hz Render ve Telemetri Döngüsü
     LaunchedEffect(Unit) {
         while (true) {
             withFrameNanos { frameNanos ->
@@ -278,19 +326,35 @@ fun MotoCrossClusterApp(
                 else ((frameNanos - lastFrameNanos) * 1e-9).coerceIn(0.001, 0.050)
                 lastFrameNanos = frameNanos
 
+                // Üst HUD çubuğunu 6 saniye dokunulmadığında otomatik gizle
+                hudVisible = !autoHideCockpitHud ||
+                    simDrawerOpen ||
+                    ((frameNanos - lastUserInteractionNanos) < 6_000_000_000L)
+
                 if (!simActive) {
                     NativeTelemetryEngineBridge.tick120HzFrame(frameNanos)
                 } else {
-                    // Canlı Test / Masaüstü Simülatör Modu: Aktif Motorun Gerçek Dişli ve Toroidal Lastik Fiziğini Çalıştırır
+                    // Canlı Sürüş Simülatörü: Hızdan otomatik vites ve gerçek devir hesaplar
                     val trueSpdMs = simSpeedKmh / 3.6
                     val rUnloaded = activeBike.rearTire.unloadedRadiusMm
                     val rLean = rUnloaded * activeBike.rearTire.staticSquishFactor -
                         activeBike.rearTire.crownRadiusMm * (1.0 - cos(Math.toRadians(abs(simLeanDeg.toDouble()))))
                     val rEffMm = rLean * (1.0 + 1.8e-6 * trueSpdMs * trueSpdMs)
 
+                    // Otomatik vites modundaysa hız arttıkça vitesi otomatik yükselt/düşür
+                    if (gearCalculationMode == GearCalculationMode.AUTO_KINEMATIC_ECU && simSpeedKmh >= 2f) {
+                        var bestG = 1
+                        for (g in 1..activeBike.gearCount) {
+                            val rpmAtG = activeBike.computeRpmAtSpeedKmh(simSpeedKmh.toDouble(), g)
+                            bestG = g
+                            if (rpmAtG <= activeBike.redlineRpm * 0.86) break
+                        }
+                        simGear = bestG
+                    }
+
                     val wheelRpm = (trueSpdMs * 60.0) / (2.0 * PI * (rEffMm / 1000.0))
                     val gearRatio = activeBike.gearRatios.getOrElse((simGear - 1).coerceIn(0, 5)) { 1.0 }
-                    val calcRpm = if (simClutchIn || simSpeedKmh < 1f) {
+                    val calcRpm = if (simClutchIn || simSpeedKmh < 1.5f) {
                         activeBike.idleRpm
                     } else {
                         (wheelRpm * activeBike.primaryReductionRatio * activeBike.finalDriveRatio * gearRatio)
@@ -321,7 +385,6 @@ fun MotoCrossClusterApp(
                         activeBike.revLimiterRpm + 150.0 * sin(timeSec * 2.0 * PI * 14.0)
                     } else calcRpm
 
-                    // Teker Derece Ölçer & Teker Metre Simülasyonu
                     val isWheelieNow = simWheelieDeg >= 5.0f && simSpeedKmh > 6f
                     if (isWheelieNow) {
                         simCurrentWheelieSec += dtSec
@@ -337,7 +400,7 @@ fun MotoCrossClusterApp(
                         simCurrentWheelieMeters = 0.0
                     }
 
-                    val rawDisplaySpd = if (useOemSpeedBias && simSpeedKmh > 1f) {
+                    val rawDisplaySpd = if (useOemSpeedBias && simSpeedKmh > 1.5f) {
                         simSpeedKmh * (1.0 + oemBiasRatio) + 1.5
                     } else simSpeedKmh.toDouble()
                     val locked299 = japan299Lock && rawDisplaySpd >= 299.0
@@ -358,6 +421,11 @@ fun MotoCrossClusterApp(
                             trueSpeedKmh = simSpeedKmh.toDouble(),
                             displayedSpeedKmh = finalDisplaySpd,
                             is299LockEngaged = locked299,
+                            hasGpsFix = true,
+                            satellitesInUse = 14,
+                            satellitesVisible = 18,
+                            gpsAccuracyMeters = 1.4f,
+                            rawGpsSpeedKmh = simSpeedKmh.toDouble(),
                             actualEngineRpm = bounceRpm,
                             normalizedRpmRatio = bounceRpm / max(1000.0, activeBike.redlineRpm),
                             peakHoldRpm = bounceRpm,
@@ -367,8 +435,8 @@ fun MotoCrossClusterApp(
                             shiftFlashPhaseOn = flashOn,
                             fullColorInversionActive = (shiftState == ShiftLightState.STAGE_2_SHIFT_NOW ||
                                 shiftState == ShiftLightState.OVER_REV_LIMITER) && flashOn,
-                            currentGear = if (simSpeedKmh < 1f && !simClutchIn) 0 else simGear,
-                            isNeutral = simSpeedKmh < 1f && !simClutchIn,
+                            currentGear = if (simSpeedKmh < 1.5f && !simClutchIn) 0 else simGear,
+                            isNeutral = simSpeedKmh < 1.5f && !simClutchIn,
                             isClutchPulled = simClutchIn,
                             transmissionState = if (simClutchIn) TransmissionEngagementState.CLUTCH_PULLED_COASTING
                             else TransmissionEngagementState.ENGAGED_IN_GEAR,
@@ -412,19 +480,37 @@ fun MotoCrossClusterApp(
     val pixelShiftOffset = if (oledPixelShiftEnabled) {
         val phase = (nativeTelemetry.timestampNanos / 1_000_000_000L) % 60L
         Offset(
-            x = sin(phase * 0.1047).toFloat() * 3.0f,
-            y = cos(phase * 0.1047).toFloat() * 2.0f
+            x = sin(phase * 0.1047).toFloat() * 2.5f,
+            y = cos(phase * 0.1047).toFloat() * 1.8f
         )
     } else Offset.Zero
+
+    fun selectGaugeAndSyncIfEnabled(newIdx: Int) {
+        val wrapped = (newIdx + OemGaugeCatalog105.all105Models.size) % OemGaugeCatalog105.all105Models.size
+        selectedGaugeIndex = wrapped
+        selectedSubModeIndex = 0
+        lastUserInteractionNanos = System.nanoTime()
+        if (syncBikeProfileWithGauge) {
+            val spec = OemGaugeCatalog105.all105Models[wrapped]
+            BikeDatabaseRepository.selectActiveBikeProfile(spec.skinId)
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
+            .pointerInput(syncBikeProfileWithGauge) {
                 detectTapGestures(
-                    onLongPress = { isControlCenterOpen = true },
+                    onTap = {
+                        lastUserInteractionNanos = System.nanoTime()
+                        hudVisible = true
+                    },
+                    onLongPress = {
+                        lastUserInteractionNanos = System.nanoTime()
+                        isControlCenterOpen = true
+                    },
                     onDoubleTap = {
-                        // Çift dokunuş: Aktif göstergenin alt modları (Street / Track / Core 1-2-3) arasında geçiş
+                        lastUserInteractionNanos = System.nanoTime()
                         val modeCount = currentSpec.availableSubModes.size
                         if (modeCount > 1) {
                             selectedSubModeIndex = (selectedSubModeIndex + 1) % modeCount
@@ -432,25 +518,25 @@ fun MotoCrossClusterApp(
                     }
                 )
             }
-            .pointerInput(Unit) {
+            .pointerInput(syncBikeProfileWithGauge) {
                 var dragAccum = 0f
                 detectHorizontalDragGestures(
-                    onDragStart = { dragAccum = 0f },
+                    onDragStart = {
+                        dragAccum = 0f
+                        lastUserInteractionNanos = System.nanoTime()
+                    },
                     onHorizontalDrag = { _, dragAmount -> dragAccum += dragAmount },
                     onDragEnd = {
-                        if (dragAccum < -90f) {
-                            selectedGaugeIndex = (selectedGaugeIndex + 1) % OemGaugeCatalog105.all105Models.size
-                            selectedSubModeIndex = 0
-                        } else if (dragAccum > 90f) {
-                            selectedGaugeIndex = (selectedGaugeIndex - 1 + OemGaugeCatalog105.all105Models.size) %
-                                OemGaugeCatalog105.all105Models.size
-                            selectedSubModeIndex = 0
+                        if (dragAccum < -85f) {
+                            selectGaugeAndSyncIfEnabled(selectedGaugeIndex + 1)
+                        } else if (dragAccum > 85f) {
+                            selectGaugeAndSyncIfEnabled(selectedGaugeIndex - 1)
                         }
                     }
                 )
             }
     ) {
-        // 1. 120 FPS OEM Gösterge Çizim Katmanı
+        // 1. 120 FPS Ultra-Gerçekçi OEM Gösterge Çizim Katmanı
         OemClusterCanvasRenderer(
             spec = currentSpec,
             subModeIndex = selectedSubModeIndex,
@@ -463,55 +549,152 @@ fun MotoCrossClusterApp(
             language = language
         )
 
-        // 2. Üst Köşe Hızlı Erişim Butonları (Eldiven Dostu Menü + Canlı Test Çekmecesi)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // 2. Otomatik Gizlenen Şık Yüzer Kokpit Hapı (Floating Cockpit Pill)
+        AnimatedVisibility(
+            visible = hudVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
         ) {
-            Surface(
-                color = Color(0xAA10141C),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.clickable { isControlCenterOpen = true }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "☰ ${LocalizationManager.getString(StringKey.CONTROL_CENTER_TITLE, language)} (${activeBike.brand} ${activeBike.modelName})",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    color = if (simActive) Color(0xFFFF6600) else Color(0xAA10141C),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.clickable { simDrawerOpen = !simDrawerOpen }
+                // Sol Hap: Garaj / Kontrol Merkezi + Aktif Motor & GPS Durumu
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (simActive) "⚡ TEST SİMÜLATÖRÜ AKTİF" else "🎛️ CANLI TEST / TEKER SİMÜLATÖRÜ",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
+                    Surface(
+                        color = Color(0xCC0D1119),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .border(1.dp, Color(0xFFFF6600), RoundedCornerShape(20.dp))
+                            .clickable {
+                                lastUserInteractionNanos = System.nanoTime()
+                                isControlCenterOpen = true
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "☰ GARAJ & AYARLAR",
+                                color = Color(0xFFFF6600),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "• ${activeBike.brand} ${activeBike.modelName}",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    // Canlı GPS Durum Rozeti
+                    val gpsLocked = nativeTelemetry.hasGpsFix
+                    Surface(
+                        color = Color(0xCC0D1119),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.border(
+                            1.dp,
+                            if (gpsLocked) Color(0xFF00E676) else Color(0xFFFFAB00),
+                            RoundedCornerShape(20.dp)
+                        )
+                    ) {
+                        Text(
+                            text = if (gpsLocked) {
+                                "🛰️ GPS ${max(4, nativeTelemetry.satellitesInUse)} SAT (±${nativeTelemetry.gpsAccuracyMeters.roundToInt()}m)"
+                            } else {
+                                "🛰️ GPS BEKLENİYOR (0.0 km/h KİLİTLİ)"
+                            },
+                            color = if (gpsLocked) Color(0xFF00E676) else Color(0xFFFFAB00),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+
+                // Sağ Hap: Hızlı Kadran Değiştirici, 0° Kalibrasyon, Kontak Sweep ve Simülatör
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    QuickHudButton("◀") { selectGaugeAndSyncIfEnabled(selectedGaugeIndex - 1) }
+                    QuickHudButton("#${currentSpec.modelNumber} ${currentSpec.brand}") {
+                        activeMenuTab = 1
+                        isControlCenterOpen = true
+                    }
+                    QuickHudButton("▶") { selectGaugeAndSyncIfEnabled(selectedGaugeIndex + 1) }
+                    QuickHudButton("0°") { onZeroCalibrateNow() }
+                    QuickHudButton("🔑") {
+                        NativeTelemetryEngineBridge.nativeTriggerIgnitionSweep(System.nanoTime())
+                    }
+                    Surface(
+                        color = if (simActive) Color(0xFFFF6600) else Color(0xCC0D1119),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier
+                            .border(1.dp, Color(0xFF374151), RoundedCornerShape(18.dp))
+                            .clickable {
+                                lastUserInteractionNanos = System.nanoTime()
+                                simDrawerOpen = !simDrawerOpen
+                            }
+                    ) {
+                        Text(
+                            text = if (simActive) "⚡ SİM AÇIK" else "🎛️ SİM",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
+                        )
+                    }
                 }
             }
         }
 
-        // 3. Masaüstü / Emülatör Canlı Sürüş & Teker Derece/Metre Test Paneli
+        // 3. Yarı-Otomatik / Manuel Vites Modunda Eldiven Dostu Ekranda Vites Kulakçıkları (- / +)
+        if (gearCalculationMode != GearCalculationMode.AUTO_KINEMATIC_ECU) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 34.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(
+                    onClick = {
+                        manualGearSelection = (manualGearSelection - 1).coerceAtLeast(0)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xCC1E2532))
+                ) {
+                    Text("▼ VİTES DÜŞÜR (-)", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+                Button(
+                    onClick = {
+                        manualGearSelection = (manualGearSelection + 1).coerceAtMost(activeBike.gearCount)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xCCFF6600))
+                ) {
+                    Text("▲ VİTES ARTIR (+)", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+
+        // 4. Canlı Sürüş & Teker Simülatörü Çekmecesi
         if (simDrawerOpen) {
             Surface(
-                color = Color(0xEE0D1017),
-                shape = RoundedCornerShape(14.dp),
+                color = Color(0xF00B0E15),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 52.dp, end = 16.dp)
-                    .width(360.dp)
-                    .border(1.dp, Color(0xFFFF6600), RoundedCornerShape(14.dp))
+                    .padding(top = 54.dp, end = 16.dp)
+                    .width(370.dp)
+                    .border(1.5.dp, Color(0xFFFF6600), RoundedCornerShape(16.dp))
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(
@@ -519,13 +702,14 @@ fun MotoCrossClusterApp(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Canlı Sürüş & Teker Simülatörü", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("🎛️ Canlı Sürüş & Teker Simülatörü", color = Color.White, fontWeight = FontWeight.Bold)
                         Switch(checked = simActive, onCheckedChange = { simActive = it })
                     }
                     Text(
-                        text = "Hız: ${simSpeedKmh.roundToInt()} km/h  |  Vites: $simGear",
+                        text = "Hız: ${simSpeedKmh.roundToInt()} km/h  •  Vites: ${if (simSpeedKmh < 1.5f) "N" else simGear}  •  Devir: ${nativeTelemetry.actualEngineRpm.roundToInt()} RPM",
                         color = Color(0xFF00E5FF),
-                        fontSize = 13.sp
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                     Slider(
                         value = simSpeedKmh,
@@ -536,7 +720,7 @@ fun MotoCrossClusterApp(
                         valueRange = 0f..299f
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        for (g in 1..6) {
+                        for (g in 1..activeBike.gearCount) {
                             Button(
                                 onClick = {
                                     simActive = true
@@ -553,7 +737,7 @@ fun MotoCrossClusterApp(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Teker Açısı (Wheelie): ${simWheelieDeg.roundToInt()}° (≥5° Teker Sayacı Başlar)",
+                        text = "Teker Açısı (Wheelie): ${simWheelieDeg.roundToInt()}° (≥5° Teker Metre Başlar)",
                         color = Color(0xFF00E676),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -584,27 +768,36 @@ fun MotoCrossClusterApp(
             }
         }
 
-        // 4. Ana Kontrol Merkezi (Garajım, 105 Gösterge Galerisi, Gelişmiş Ayarlar, Yol Bilgisayarı & Drag Box)
+        // 5. Tam Kapsamlı Kontrol Merkezi (Garajım & Motor Stüdyosu, 105 Gösterge Galerisi, Pro Ayarlar, Yol Bilgisayarı)
         if (isControlCenterOpen) {
             Surface(
-                color = Color(0xF50A0D12),
+                color = Color(0xFA080B10),
                 modifier = Modifier.fillMaxSize()
             ) {
-                Column(modifier = Modifier.fillMaxSize().padding(18.dp)) {
-                    // Üst Başlık ve Sekmeler
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "🏍️ " + LocalizationManager.getString(StringKey.APP_TITLE, language),
-                            color = Color(0xFFFF6600),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column {
+                            Text(
+                                text = "🏍️ MotoCross — OEM-Cluster Pro Studio",
+                                color = Color(0xFFFF6600),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Aktif Motor: ${activeBike.brand} ${activeBike.modelName} (${activeBike.redlineRpm.roundToInt()} RPM)  •  Seçili Kadran: #${currentSpec.modelNumber} ${currentSpec.brand} ${currentSpec.modelName}",
+                                color = Color(0xFFB0BEC5),
+                                fontSize = 12.sp
+                            )
+                        }
                         Button(
-                            onClick = { isControlCenterOpen = false },
+                            onClick = {
+                                lastUserInteractionNanos = System.nanoTime()
+                                isControlCenterOpen = false
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF1744))
                         ) {
                             Text("✕ KADRANA DÖN", color = Color.White, fontWeight = FontWeight.Bold)
@@ -614,10 +807,10 @@ fun MotoCrossClusterApp(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     val tabs = listOf(
-                        "🏠 " + LocalizationManager.getString(StringKey.MENU_MY_GARAGE, language),
-                        "🎨 " + LocalizationManager.getString(StringKey.MENU_DASHBOARD_GALLERY, language),
-                        "⚙️ " + LocalizationManager.getString(StringKey.MENU_SETTINGS, language),
-                        "🏁 " + LocalizationManager.getString(StringKey.MENU_TRIP_TELEMETRY, language)
+                        "🔧 Garajım & Motor Bilgileri (105 Profil)",
+                        "🎨 105 OEM Gösterge Galerisi",
+                        "⚙️ GPS, Vites & ECU Ayarları",
+                        "🏁 Yol Bilgisayarı & Teker Rekorları"
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -627,38 +820,39 @@ fun MotoCrossClusterApp(
                             Button(
                                 onClick = { activeMenuTab = idx },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (activeMenuTab == idx) Color(0xFFFF6600) else Color(0xFF1A1F29)
+                                    containerColor = if (activeMenuTab == idx) Color(0xFFFF6600) else Color(0xFF171C26)
                                 ),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text(title, fontSize = 12.sp, maxLines = 1)
+                                Text(title, fontSize = 12.sp, maxLines = 1, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Sekme İçerikleri
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (activeMenuTab) {
-                            0 -> GarageProfileTab(
+                            0 -> GarageProfileStudioTab(
                                 activeBike = activeBike,
                                 allBikes = allGarageBikes,
-                                language = language
+                                syncBikeWithGauge = syncBikeProfileWithGauge,
+                                onSyncBikeWithGaugeChange = { syncBikeProfileWithGauge = it }
                             )
                             1 -> DashboardGallery105Tab(
                                 selectedGaugeIndex = selectedGaugeIndex,
                                 favoriteSkinIds = favoriteSkinIds,
-                                language = language,
+                                syncBikeWithGauge = syncBikeProfileWithGauge,
+                                onSyncBikeWithGaugeChange = { syncBikeProfileWithGauge = it },
                                 onSelectGauge = { idx ->
-                                    selectedGaugeIndex = idx
-                                    selectedSubModeIndex = 0
+                                    selectGaugeAndSyncIfEnabled(idx)
                                     NativeTelemetryEngineBridge.nativeTriggerIgnitionSweep(System.nanoTime())
                                     isControlCenterOpen = false
                                 }
                             )
                             2 -> AdvancedSettingsTab(
                                 language = language,
+                                telemetry = nativeTelemetry,
                                 useMph = useMph,
                                 onUseMphChange = { useMph = it },
                                 useOemSpeedBias = useOemSpeedBias,
@@ -667,12 +861,26 @@ fun MotoCrossClusterApp(
                                 onOemBiasRatioChange = { oemBiasRatio = it },
                                 japan299Lock = japan299Lock,
                                 onJapan299LockChange = { japan299Lock = it },
+                                stationaryDeadbandKmh = stationaryDeadbandKmh,
+                                onStationaryDeadbandChange = { stationaryDeadbandKmh = it },
+                                maxGpsAccuracyMeters = maxGpsAccuracyMeters,
+                                onMaxGpsAccuracyChange = { maxGpsAccuracyMeters = it },
+                                imuBlendingWeight = imuBlendingWeight,
+                                onImuBlendingWeightChange = { imuBlendingWeight = it },
+                                gearCalculationMode = gearCalculationMode,
+                                onGearCalculationModeChange = { gearCalculationMode = it },
+                                syncBikeWithGauge = syncBikeProfileWithGauge,
+                                onSyncBikeWithGaugeChange = { syncBikeProfileWithGauge = it },
                                 rpmScalingMode = rpmScalingMode,
                                 onRpmScalingModeChange = { rpmScalingMode = it },
                                 wheelieDisplayMode = wheelieDisplayMode,
                                 onWheelieDisplayModeChange = { wheelieDisplayMode = it },
                                 autoOptimalShift = autoOptimalShift,
                                 onAutoOptimalShiftChange = { autoOptimalShift = it },
+                                manualStage1Rpm = manualStage1Rpm,
+                                onManualStage1RpmChange = { manualStage1Rpm = it },
+                                manualStage2Rpm = manualStage2Rpm,
+                                onManualStage2RpmChange = { manualStage2Rpm = it },
                                 reactionTimeMs = reactionTimeMs,
                                 onReactionTimeMsChange = { reactionTimeMs = it },
                                 acousticMicEnabled = acousticMicEnabled,
@@ -685,6 +893,10 @@ fun MotoCrossClusterApp(
                                     themeOverrideMode = it
                                     onThemeModeChanged(it)
                                 },
+                                autoHideCockpitHud = autoHideCockpitHud,
+                                onAutoHideCockpitHudChange = { autoHideCockpitHud = it },
+                                oledPixelShiftEnabled = oledPixelShiftEnabled,
+                                onOledPixelShiftChange = { oledPixelShiftEnabled = it },
                                 chromaKeyGreen = chromaKeyGreen,
                                 onChromaKeyChange = { chromaKeyGreen = it },
                                 onZeroCalibrateNow = onZeroCalibrateNow
@@ -721,75 +933,208 @@ fun MotoCrossClusterApp(
 }
 
 @Composable
-private fun GarageProfileTab(
-    activeBike: com.oemcluster.pro.domain.BikeMechanicalProfile,
-    allBikes: List<com.oemcluster.pro.domain.BikeMechanicalProfile>,
-    language: AppLanguage
+private fun QuickHudButton(label: String, onClick: () -> Unit) {
+    Surface(
+        color = Color(0xCC0D1119),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .border(1.dp, Color(0xFF2E3646), RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
+        )
+    }
+}
+
+// =========================================================================================
+// SEKME 1: PRO GARAJIM & MOTOR MEKANİK STÜDYOSU (105 FABRİKA PROFİLİ + 2 MODLU ÖZEL EDİTÖR)
+// =========================================================================================
+@Composable
+private fun GarageProfileStudioTab(
+    activeBike: BikeMechanicalProfile,
+    allBikes: List<BikeMechanicalProfile>,
+    syncBikeWithGauge: Boolean,
+    onSyncBikeWithGaugeChange: (Boolean) -> Unit
 ) {
-    var frontTeethText by remember(activeBike) { mutableStateOf(activeBike.frontSprocketTeeth.toString()) }
-    var rearTeethText by remember(activeBike) { mutableStateOf(activeBike.rearSprocketTeeth.toString()) }
-    var rearTireSpecText by remember(activeBike) { mutableStateOf(activeBike.rearTire.toSpecString()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedBrand by remember { mutableStateOf("Tümü") }
+    var editorMode by remember { mutableIntStateOf(0) } // 0: Kolay Hız-Vites Modu, 1: Mühendislik Dişli/Şanzıman Modu
+    var statusBanner by remember { mutableStateOf("") }
+
+    // Ortak Alanlar
+    var customBrand by remember(activeBike) { mutableStateOf(activeBike.brand) }
+    var customModel by remember(activeBike) { mutableStateOf(activeBike.modelName) }
+    var customCc by remember(activeBike) { mutableStateOf(activeBike.displacementCc.toString()) }
+    var customGearCount by remember(activeBike) { mutableIntStateOf(activeBike.gearCount) }
+    var idleRpmText by remember(activeBike) { mutableStateOf(activeBike.idleRpm.roundToInt().toString()) }
     var redlineRpmText by remember(activeBike) { mutableStateOf(activeBike.redlineRpm.roundToInt().toString()) }
     var limiterRpmText by remember(activeBike) { mutableStateOf(activeBike.revLimiterRpm.roundToInt().toString()) }
+    var peakHpText by remember(activeBike) { mutableStateOf(activeBike.peakPowerHp.roundToInt().toString()) }
+    var peakTrqText by remember(activeBike) { mutableStateOf(activeBike.peakTorqueNm.roundToInt().toString()) }
+    var rearTireSpecText by remember(activeBike) { mutableStateOf(activeBike.rearTire.toSpecString()) }
 
-    Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Sol Sütun: Fabrika Veritabanı Motor Seçimi
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item {
-                Text(
-                    text = LocalizationManager.getString(StringKey.GARAGE_ACTIVE_PROFILE_BADGE, language),
-                    color = Color(0xFF00E676),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
-                Text(
-                    text = LocalizationManager.getString(StringKey.GARAGE_SINGLE_SOURCE_WARNING, language),
-                    color = Color.LightGray,
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-            items(allBikes) { bike ->
-                val isSelected = bike.profileId == activeBike.profileId
-                Surface(
-                    color = if (isSelected) Color(0xFF28180D) else Color(0xFF151922),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            width = if (isSelected) 2.dp else 1.dp,
-                            color = if (isSelected) Color(0xFFFF6600) else Color(0xFF282E3D),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        .clickable {
-                            BikeDatabaseRepository.selectActiveBikeProfile(bike.profileId)
-                        }
+    // Kolay Mod: 1..6. Vites Maksimum Hızları (km/h)
+    var gear1MaxKmh by remember(activeBike) {
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 1).roundToInt().toString())
+    }
+    var gear2MaxKmh by remember(activeBike) {
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 2).roundToInt().toString())
+    }
+    var gear3MaxKmh by remember(activeBike) {
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 3).roundToInt().toString())
+    }
+    var gear4MaxKmh by remember(activeBike) {
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 4).roundToInt().toString())
+    }
+    var gear5MaxKmh by remember(activeBike) {
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 5).roundToInt().toString())
+    }
+    var gear6MaxKmh by remember(activeBike) {
+        mutableStateOf(activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, 6).roundToInt().toString())
+    }
+
+    // Mühendislik Modu: Ön/Arka Dişli, Primer Oran ve 1..6. Vites Şanzıman Oranları
+    var frontTeethText by remember(activeBike) { mutableStateOf(activeBike.frontSprocketTeeth.toString()) }
+    var rearTeethText by remember(activeBike) { mutableStateOf(activeBike.rearSprocketTeeth.toString()) }
+    var primaryRatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.primaryReductionRatio)) }
+    var g1RatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(0) { 2.800 })) }
+    var g2RatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(1) { 2.000 })) }
+    var g3RatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(2) { 1.550 })) }
+    var g4RatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(3) { 1.280 })) }
+    var g5RatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(4) { 1.100 })) }
+    var g6RatioText by remember(activeBike) { mutableStateOf(String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(5) { 0.960 })) }
+
+    val brands = listOf("Tümü", "KTM", "Yamaha", "Honda", "Kawasaki", "Suzuki", "BMW", "Ducati", "Triumph", "Aprilia", "MV Agusta", "Husqvarna")
+    val filteredBikes = allBikes.filter { bike ->
+        val matchesBrand = selectedBrand == "Tümü" || bike.brand.equals(selectedBrand, ignoreCase = true)
+        val matchesQuery = searchQuery.isBlank() ||
+            bike.modelName.contains(searchQuery, ignoreCase = true) ||
+            bike.brand.contains(searchQuery, ignoreCase = true)
+        matchesBrand && matchesQuery
+    }
+
+    Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        // SOL SÜTUN (%44): 105 Motosiklet Fabrika Veritabanı Seçici
+        Column(modifier = Modifier.weight(0.44f).fillMaxHeight()) {
+            // Altın Kural vs Otomatik Eşleştirme Anahtarı
+            Surface(
+                color = Color(0xFF141923),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "${bike.brand} ${bike.modelName} (${bike.modelYear})",
-                            color = Color.White,
+                            text = if (syncBikeWithGauge) "🔗 Kadran Değişince Motoru da Otomatik Eşleştir"
+                            else "🔒 Altın Kural: Kendi Motorumu Tüm Kadranlarda Sabitle",
+                            color = if (syncBikeWithGauge) Color(0xFF00E5FF) else Color(0xFF00E676),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Text(
-                            text = "Dişli: ${bike.frontSprocketTeeth}/${bike.rearSprocketTeeth}  •  Lastik: ${bike.rearTire.toSpecString()}  •  Redline: ${bike.redlineRpm.roundToInt()} RPM",
-                            color = Color(0xFFB0BEC5),
                             fontSize = 12.sp
                         )
+                        Text(
+                            text = "Aktif: ${activeBike.brand} ${activeBike.modelName}",
+                            color = Color.LightGray,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(checked = syncBikeWithGauge, onCheckedChange = onSyncBikeWithGaugeChange)
+                }
+            }
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("105 Motor İçinde Ara (Örn: R6, MT-07, 390 Duke, Hayabusa)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(brands) { b ->
+                    Surface(
+                        color = if (selectedBrand == b) Color(0xFFFF6600) else Color(0xFF1B202C),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.clickable { selectedBrand = b }
+                    ) {
+                        Text(
+                            text = b,
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(filteredBikes) { bike ->
+                    val isSelected = bike.profileId == activeBike.profileId
+                    Surface(
+                        color = if (isSelected) Color(0xFF28180D) else Color(0xFF131720),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) Color(0xFFFF6600) else Color(0xFF252C3B),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clickable {
+                                BikeDatabaseRepository.selectActiveBikeProfile(bike.profileId)
+                                statusBanner = "✅ ${bike.brand} ${bike.modelName} mekanik motor profili yüklendi!"
+                            }
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${bike.brand} ${bike.modelName}",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = "${bike.redlineRpm.roundToInt()} RPM",
+                                    color = Color(0xFFFF6600),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Text(
+                                text = "${bike.displacementCc} cc  •  Dişli: ${bike.frontSprocketTeeth}/${bike.rearSprocketTeeth}T  •  Lastik: ${bike.rearTire.toSpecString()}  •  6.Vites: ${bike.computeSpeedKmhAtRpm(bike.redlineRpm, bike.gearCount).roundToInt()} km/h",
+                                color = Color(0xFF90A4AE),
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Sağ Sütun: Dişli, Lastik Ebadı ve ECU Flash Özelleştirme (Custom Tuning)
+        // SAĞ SÜTUN (%56): 2-Modlu Profesyonel Motor & Şanzıman Kalibrasyon Stüdyosu + Canlı Vites-Hız Tablosu
         Surface(
-            color = Color(0xFF141820),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.weight(1f).fillMaxHeight()
+            color = Color(0xFF12161F),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.weight(0.56f).fillMaxHeight()
         ) {
             LazyColumn(
                 modifier = Modifier.padding(14.dp),
@@ -797,82 +1142,391 @@ private fun GarageProfileTab(
             ) {
                 item {
                     Text(
-                        text = "🔧 ${LocalizationManager.getString(StringKey.GARAGE_CUSTOM_TUNING_HEADER, language)}: ${activeBike.brand} ${activeBike.modelName}",
+                        text = "🛠️ Motor Bilgileri, Vites-Hız & Dişli Stüdyosu: ${activeBike.brand} ${activeBike.modelName}",
                         color = Color(0xFFFF6600),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 16.sp
                     )
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(
-                            value = frontTeethText,
-                            onValueChange = { frontTeethText = it },
-                            label = { Text(LocalizationManager.getString(StringKey.PARAM_FRONT_SPROCKET, language)) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = rearTeethText,
-                            onValueChange = { rearTeethText = it },
-                            label = { Text(LocalizationManager.getString(StringKey.PARAM_REAR_SPROCKET, language)) },
-                            modifier = Modifier.weight(1f)
+                    if (statusBanner.isNotEmpty()) {
+                        Text(
+                            text = statusBanner,
+                            color = Color(0xFF00E676),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     }
                 }
+
+                // Mod Seçici: Kolay Hız Modu vs Mühendislik Dişli Modu
                 item {
-                    OutlinedTextField(
-                        value = rearTireSpecText,
-                        onValueChange = { rearTireSpecText = it },
-                        label = { Text(LocalizationManager.getString(StringKey.PARAM_REAR_TIRE_SPEC, language)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { editorMode = 0 },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (editorMode == 0) Color(0xFFFF6600) else Color(0xFF1D2432)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("⚡ KOLAY MOD: Vites Hızlarını Gir", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = { editorMode = 1 },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (editorMode == 1) Color(0xFFFF6600) else Color(0xFF1D2432)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("⚙️ MÜHENDİSLİK MODU: Dişli & Şanzıman Oranı", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
+
+                // Temel Motor Kimliği ve Devir Limitleri
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = customBrand,
+                            onValueChange = { customBrand = it },
+                            label = { Text("Marka") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = customModel,
+                            onValueChange = { customModel = it },
+                            label = { Text("Model Adı") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1.4f)
+                        )
+                        OutlinedTextField(
+                            value = customCc,
+                            onValueChange = { customCc = it },
+                            label = { Text("Hacim (cc)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(0.8f)
+                        )
+                    }
+                }
+
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = idleRpmText,
+                            onValueChange = { idleRpmText = it },
+                            label = { Text("Rölanti RPM") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
                         OutlinedTextField(
                             value = redlineRpmText,
                             onValueChange = { redlineRpmText = it },
-                            label = { Text(LocalizationManager.getString(StringKey.PARAM_REDLINE_RPM, language)) },
+                            label = { Text("Redline RPM") },
+                            singleLine = true,
                             modifier = Modifier.weight(1f)
                         )
                         OutlinedTextField(
                             value = limiterRpmText,
                             onValueChange = { limiterRpmText = it },
-                            label = { Text(LocalizationManager.getString(StringKey.PARAM_REV_LIMITER_RPM, language)) },
+                            label = { Text("Kesici RPM") },
+                            singleLine = true,
                             modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = peakHpText,
+                            onValueChange = { peakHpText = it },
+                            label = { Text("Güç (HP)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(0.8f)
                         )
                     }
                 }
+
+                // Arka Lastik Ebadı Hızlı Seçici + Giriş
                 item {
-                    val optRpms = activeBike.computeAllOptimalShiftRpms()
                     Text(
-                        text = "Hesaplanan Optimum Vites Devirleri (RPM_opt[1..5]): " +
-                            optRpms.take(5).joinToString(" / ") { "${it.roundToInt()}" },
-                        color = Color(0xFF00E5FF),
-                        fontSize = 12.sp
+                        text = "Arka Lastik Ebadı (Gerçek Teker Çevresi & Hız/Devir Hesabı İçin):",
+                        color = Color.LightGray,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(BikeDatabaseRepository.COMMON_REAR_TIRES) { preset ->
+                            Surface(
+                                color = if (rearTireSpecText == preset) Color(0xFFFF6600) else Color(0xFF1E2533),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.clickable { rearTireSpecText = preset }
+                            ) {
+                                Text(
+                                    text = preset,
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                    }
                 }
+
+                if (editorMode == 0) {
+                    // KOLAY MOD: 1..6. Vites Maksimum Hızlarını (km/h) Girerek Otomatik Şanzıman Oranı Hesaplama
+                    item {
+                        Surface(
+                            color = Color(0xFF192130),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "⚡ Her Viteste Redline (${redlineRpmText} RPM) Hızınızı (km/h) Girin — Oranlar Otomatik Hesaplanır!",
+                                    color = Color(0xFF00E5FF),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = gear1MaxKmh,
+                                        onValueChange = { gear1MaxKmh = it },
+                                        label = { Text("1. Vites (km/h)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = gear2MaxKmh,
+                                        onValueChange = { gear2MaxKmh = it },
+                                        label = { Text("2. Vites (km/h)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = gear3MaxKmh,
+                                        onValueChange = { gear3MaxKmh = it },
+                                        label = { Text("3. Vites (km/h)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = gear4MaxKmh,
+                                        onValueChange = { gear4MaxKmh = it },
+                                        label = { Text("4. Vites (km/h)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = gear5MaxKmh,
+                                        onValueChange = { gear5MaxKmh = it },
+                                        label = { Text("5. Vites (km/h)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = gear6MaxKmh,
+                                        onValueChange = { gear6MaxKmh = it },
+                                        label = { Text("6. Vites (km/h)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        val redRpm = redlineRpmText.toDoubleOrNull()?.coerceIn(4000.0, 20000.0) ?: activeBike.redlineRpm
+                                        val limRpm = limiterRpmText.toDoubleOrNull()?.coerceIn(redRpm, 21000.0) ?: (redRpm + 500.0)
+                                        val idleRpm = idleRpmText.toDoubleOrNull()?.coerceIn(800.0, 3000.0) ?: activeBike.idleRpm
+                                        val tire = TireSpecification.fromSpecString(rearTireSpecText, isRear = true)
+                                        val speeds = listOf(
+                                            gear1MaxKmh.toDoubleOrNull() ?: 60.0,
+                                            gear2MaxKmh.toDoubleOrNull() ?: 90.0,
+                                            gear3MaxKmh.toDoubleOrNull() ?: 120.0,
+                                            gear4MaxKmh.toDoubleOrNull() ?: 148.0,
+                                            gear5MaxKmh.toDoubleOrNull() ?: 172.0,
+                                            gear6MaxKmh.toDoubleOrNull() ?: 195.0
+                                        )
+                                        val computedRatios = speeds.map { spd ->
+                                            BikeMechanicalProfile.computeGearRatioFromTopSpeedKmh(
+                                                topSpeedKmh = spd,
+                                                atRpm = redRpm,
+                                                primaryReduction = activeBike.primaryReductionRatio,
+                                                frontTeeth = activeBike.frontSprocketTeeth,
+                                                rearTeeth = activeBike.rearSprocketTeeth,
+                                                rearTire = tire
+                                            )
+                                        }
+                                        val updated = activeBike.copy(
+                                            brand = customBrand.ifBlank { activeBike.brand },
+                                            modelName = customModel.ifBlank { activeBike.modelName },
+                                            displacementCc = customCc.toIntOrNull() ?: activeBike.displacementCc,
+                                            gearCount = customGearCount,
+                                            gearRatios = computedRatios,
+                                            rearTire = tire,
+                                            idleRpm = idleRpm,
+                                            redlineRpm = redRpm,
+                                            revLimiterRpm = limRpm,
+                                            peakPowerHp = peakHpText.toDoubleOrNull() ?: activeBike.peakPowerHp,
+                                            peakTorqueNm = peakTrqText.toDoubleOrNull() ?: activeBike.peakTorqueNm
+                                        )
+                                        BikeDatabaseRepository.saveOrUpdateCustomProfile(updated)
+                                        NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(updated)
+                                        statusBanner = "✅ Vites hızlarından şanzıman oranları hesaplandı ve C++20 ECU'ya kaydedildi!"
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "💾 VİTES HIZLARINDAN OTOMATİK ŞANZIMAN HESAPLA & UYGULA",
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // MÜHENDİSLİK MODU: Ön/Arka Dişli, Primer Oran ve 1..6. Vites Oranları
+                    item {
+                        Surface(
+                            color = Color(0xFF192130),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "⚙️ Ön/Arka Dişli (Sprocket), Primer Redüksiyon ve 1–6. Vites Şanzıman Oranları",
+                                    color = Color(0xFFFFAB00),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = frontTeethText,
+                                        onValueChange = { frontTeethText = it },
+                                        label = { Text("Ön Dişli (T)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = rearTeethText,
+                                        onValueChange = { rearTeethText = it },
+                                        label = { Text("Arka Dişli (T)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = primaryRatioText,
+                                        onValueChange = { primaryRatioText = it },
+                                        label = { Text("Primer Oran") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(value = g1RatioText, onValueChange = { g1RatioText = it }, label = { Text("1.Vites Oranı") }, singleLine = true, modifier = Modifier.weight(1f))
+                                    OutlinedTextField(value = g2RatioText, onValueChange = { g2RatioText = it }, label = { Text("2.Vites Oranı") }, singleLine = true, modifier = Modifier.weight(1f))
+                                    OutlinedTextField(value = g3RatioText, onValueChange = { g3RatioText = it }, label = { Text("3.Vites Oranı") }, singleLine = true, modifier = Modifier.weight(1f))
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(value = g4RatioText, onValueChange = { g4RatioText = it }, label = { Text("4.Vites Oranı") }, singleLine = true, modifier = Modifier.weight(1f))
+                                    OutlinedTextField(value = g5RatioText, onValueChange = { g5RatioText = it }, label = { Text("5.Vites Oranı") }, singleLine = true, modifier = Modifier.weight(1f))
+                                    OutlinedTextField(value = g6RatioText, onValueChange = { g6RatioText = it }, label = { Text("6.Vites Oranı") }, singleLine = true, modifier = Modifier.weight(1f))
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = {
+                                            val fTeeth = frontTeethText.toIntOrNull()?.coerceIn(10, 22) ?: activeBike.frontSprocketTeeth
+                                            val rTeeth = rearTeethText.toIntOrNull()?.coerceIn(30, 62) ?: activeBike.rearSprocketTeeth
+                                            val prim = primaryRatioText.toDoubleOrNull()?.coerceIn(1.0, 4.0) ?: activeBike.primaryReductionRatio
+                                            val ratios = listOf(
+                                                g1RatioText.toDoubleOrNull() ?: activeBike.gearRatios[0],
+                                                g2RatioText.toDoubleOrNull() ?: activeBike.gearRatios[1],
+                                                g3RatioText.toDoubleOrNull() ?: activeBike.gearRatios[2],
+                                                g4RatioText.toDoubleOrNull() ?: activeBike.gearRatios[3],
+                                                g5RatioText.toDoubleOrNull() ?: activeBike.gearRatios[4],
+                                                g6RatioText.toDoubleOrNull() ?: activeBike.gearRatios[5]
+                                            )
+                                            val updated = activeBike.copy(
+                                                brand = customBrand.ifBlank { activeBike.brand },
+                                                modelName = customModel.ifBlank { activeBike.modelName },
+                                                displacementCc = customCc.toIntOrNull() ?: activeBike.displacementCc,
+                                                frontSprocketTeeth = fTeeth,
+                                                rearSprocketTeeth = rTeeth,
+                                                primaryReductionRatio = prim,
+                                                gearRatios = ratios,
+                                                rearTire = TireSpecification.fromSpecString(rearTireSpecText, isRear = true),
+                                                idleRpm = idleRpmText.toDoubleOrNull() ?: activeBike.idleRpm,
+                                                redlineRpm = redlineRpmText.toDoubleOrNull() ?: activeBike.redlineRpm,
+                                                revLimiterRpm = limiterRpmText.toDoubleOrNull() ?: activeBike.revLimiterRpm
+                                            )
+                                            BikeDatabaseRepository.saveOrUpdateCustomProfile(updated)
+                                            NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(updated)
+                                            statusBanner = "✅ Dişli ve şanzıman oranları C++20 ECU'ya kaydedildi!"
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6600)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("💾 PROFİLİ GÜNCELLE", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            val newId = "custom_${System.currentTimeMillis()}"
+                                            val newProfile = activeBike.copy(
+                                                profileId = newId,
+                                                brand = customBrand.ifBlank { "Özel" },
+                                                modelName = customModel.ifBlank { "Custom Bike" },
+                                                displacementCc = customCc.toIntOrNull() ?: activeBike.displacementCc,
+                                                frontSprocketTeeth = frontTeethText.toIntOrNull() ?: activeBike.frontSprocketTeeth,
+                                                rearSprocketTeeth = rearTeethText.toIntOrNull() ?: activeBike.rearSprocketTeeth,
+                                                rearTire = TireSpecification.fromSpecString(rearTireSpecText, isRear = true),
+                                                redlineRpm = redlineRpmText.toDoubleOrNull() ?: activeBike.redlineRpm,
+                                                revLimiterRpm = limiterRpmText.toDoubleOrNull() ?: activeBike.revLimiterRpm
+                                            )
+                                            BikeDatabaseRepository.saveOrUpdateCustomProfile(newProfile)
+                                            NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(newProfile)
+                                            statusBanner = "✅ '${newProfile.brand} ${newProfile.modelName}' garaja yeni motor olarak eklendi!"
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("➕ YENİ MOTOR OLARAK EKLE", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // CANLI VİTES – HIZ – DEVİR TABLOSU (1..6. Vites)
                 item {
-                    Button(
-                        onClick = {
-                            val updated = activeBike.copy(
-                                frontSprocketTeeth = frontTeethText.toIntOrNull() ?: activeBike.frontSprocketTeeth,
-                                rearSprocketTeeth = rearTeethText.toIntOrNull() ?: activeBike.rearSprocketTeeth,
-                                rearTire = TireSpecification.parse(rearTireSpecText, activeBike.rearTire.staticSquishFactor),
-                                redlineRpm = redlineRpmText.toDoubleOrNull() ?: activeBike.redlineRpm,
-                                revLimiterRpm = limiterRpmText.toDoubleOrNull() ?: activeBike.revLimiterRpm
-                            )
-                            BikeDatabaseRepository.upsertBikeProfile(updated, setAsActive = true)
-                            NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(updated)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
-                        modifier = Modifier.fillMaxWidth()
+                    Surface(
+                        color = Color(0xFF0D1118),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFF283244), RoundedCornerShape(10.dp))
                     ) {
-                        Text(
-                            text = "✓ " + LocalizationManager.getString(StringKey.ACTION_SAVE, language),
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "📊 Canlı Şanzıman Vites–Hız–Devir Tablosu (${activeBike.brand} ${activeBike.modelName})",
+                                color = Color(0xFF00E5FF),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            for (g in 1..activeBike.gearCount) {
+                                val spd5k = activeBike.computeSpeedKmhAtRpm(5000.0, g).roundToInt()
+                                val spdTrq = activeBike.computeSpeedKmhAtRpm(activeBike.peakTorqueRpm, g).roundToInt()
+                                val spdRed = activeBike.computeSpeedKmhAtRpm(activeBike.redlineRpm, g).roundToInt()
+                                val ratioStr = String.format(Locale.US, "%.3f", activeBike.gearRatios.getOrElse(g - 1) { 1.0 })
+                                Text(
+                                    text = "$g. Vites (Oran $ratioStr):   5000 RPM → $spd5k km/h   •   Max Tork → $spdTrq km/h   •   Redline → $spdRed km/h",
+                                    color = Color.White,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -880,116 +1534,182 @@ private fun GarageProfileTab(
     }
 }
 
+// =========================================================================================
+// SEKME 2: 105 OEM GÖSTERGE GALERİSİ (MARKA & KATEGORİ FİLTRELİ GÖRSEL ÖNİZLEME KARTLARI)
+// =========================================================================================
 @Composable
 private fun DashboardGallery105Tab(
     selectedGaugeIndex: Int,
     favoriteSkinIds: MutableList<String>,
-    language: AppLanguage,
+    syncBikeWithGauge: Boolean,
+    onSyncBikeWithGaugeChange: (Boolean) -> Unit,
     onSelectGauge: (Int) -> Unit
 ) {
-    var selectedBrand by remember { mutableStateOf("ALL") }
-    var selectedCategory by remember { mutableStateOf<GaugeDisplayCategory?>(null) }
-    var favoritesOnly by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<GaugeDisplayCategory?>(null) }
+    var selectedBrand by remember { mutableStateOf("Tümü") }
+    var showFavoritesOnly by remember { mutableStateOf(false) }
 
-    val filteredModels = remember(selectedBrand, selectedCategory, favoritesOnly, searchQuery, favoriteSkinIds.size) {
-        OemGaugeCatalog105.all105Models.filter { spec ->
-            val brandOk = selectedBrand == "ALL" || spec.brand.equals(selectedBrand, ignoreCase = true)
-            val catOk = selectedCategory == null || spec.displayCategory == selectedCategory
-            val favOk = !favoritesOnly || favoriteSkinIds.contains(spec.skinId)
-            val qOk = searchQuery.isBlank() ||
-                spec.modelName.contains(searchQuery, ignoreCase = true) ||
-                spec.brand.contains(searchQuery, ignoreCase = true) ||
-                spec.modelNumber.toString() == searchQuery.trim()
-            brandOk && catOk && favOk && qOk
-        }
+    val brands = listOf("Tümü", "KTM", "Yamaha", "Honda", "Kawasaki", "Suzuki", "BMW", "Ducati", "Triumph", "Aprilia", "MV Agusta", "Husqvarna")
+
+    val filteredModels = OemGaugeCatalog105.all105Models.mapIndexedNotNull { idx, spec ->
+        val matchesFav = !showFavoritesOnly || favoriteSkinIds.contains(spec.skinId)
+        val matchesCat = selectedCategory == null || spec.displayCategory == selectedCategory
+        val matchesBrand = selectedBrand == "Tümü" || spec.brand.equals(selectedBrand, ignoreCase = true)
+        val matchesSearch = searchQuery.isBlank() ||
+            spec.brand.contains(searchQuery, ignoreCase = true) ||
+            spec.modelName.contains(searchQuery, ignoreCase = true) ||
+            spec.modelNumber.toString() == searchQuery.trim()
+        if (matchesFav && matchesCat && matchesBrand && matchesSearch) idx to spec else null
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = LocalizationManager.getString(StringKey.GALLERY_SKIN_INDEPENDENT_NOTE, language),
-            color = Color(0xFF00E5FF),
-            fontSize = 12.sp
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("105 Gösterge Modeli Ara (Örn: S1000RR, R1M, Hayabusa, R6, Panigale)") },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            Button(
+                onClick = { showFavoritesOnly = !showFavoritesOnly },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (showFavoritesOnly) Color(0xFFFFAB00) else Color(0xFF1D222D)
+                )
+            ) {
+                Text("⭐ Favoriler (${favoriteSkinIds.size})", color = Color.White, fontSize = 12.sp)
+            }
+            Button(
+                onClick = { selectedCategory = null; selectedBrand = "Tümü" },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selectedCategory == null && selectedBrand == "Tümü") Color(0xFFFF6600) else Color(0xFF1D222D)
+                )
+            ) {
+                Text("Tümü (105)", fontSize = 12.sp)
+            }
+            Button(
+                onClick = { selectedCategory = GaugeDisplayCategory.MODERN_TFT },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selectedCategory == GaugeDisplayCategory.MODERN_TFT) Color(0xFFFF6600) else Color(0xFF1D222D)
+                )
+            ) {
+                Text("TFT", fontSize = 12.sp)
+            }
+            Button(
+                onClick = { selectedCategory = GaugeDisplayCategory.ANALOG_HYBRID },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selectedCategory == GaugeDisplayCategory.ANALOG_HYBRID) Color(0xFFFF6600) else Color(0xFF1D222D)
+                )
+            ) {
+                Text("Analog Hibrit", fontSize = 12.sp)
+            }
+            Button(
+                onClick = { selectedCategory = GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selectedCategory == GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD) Color(0xFFFF6600) else Color(0xFF1D222D)
+                )
+            ) {
+                Text("LCD", fontSize = 12.sp)
+            }
+        }
+
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Marka Filtre Çubuğu (12 Marka)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            item {
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.GALLERY_ALL_BRANDS, language),
-                    selected = selectedBrand == "ALL",
-                    onClick = { selectedBrand = "ALL" }
-                )
-            }
-            item {
-                FilterChipButton(
-                    label = "⭐ " + LocalizationManager.getString(StringKey.ACTION_FAVORITES_ONLY, language),
-                    selected = favoritesOnly,
-                    onClick = { favoritesOnly = !favoritesOnly }
-                )
-            }
-            items(OemGaugeCatalog105.allBrands) { brand ->
-                FilterChipButton(
-                    label = brand,
-                    selected = selectedBrand == brand,
-                    onClick = { selectedBrand = brand }
-                )
+            items(brands) { b ->
+                Surface(
+                    color = if (selectedBrand == b) Color(0xFFFF6600) else Color(0xFF1B202C),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.clickable { selectedBrand = b }
+                ) {
+                    Text(
+                        text = b,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 105 Gösterge Listesi
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(filteredModels) { spec ->
-                val globalIdx = spec.modelNumber - 1
-                val isSelected = globalIdx == selectedGaugeIndex
+            items(filteredModels) { (index, spec) ->
+                val isSelected = index == selectedGaugeIndex
                 val isFav = favoriteSkinIds.contains(spec.skinId)
+                val accent = Color(spec.accentBrandColorHex)
                 Surface(
-                    color = if (isSelected) Color(0xFF28180D) else Color(0xFF141821),
-                    shape = RoundedCornerShape(10.dp),
+                    color = if (isSelected) Color(0xFF241810) else Color(0xFF131720),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
                             width = if (isSelected) 2.dp else 1.dp,
-                            color = if (isSelected) Color(0xFFFF6600) else Color(0xFF252B38),
-                            shape = RoundedCornerShape(10.dp)
+                            color = if (isSelected) accent else Color(0xFF262D3D),
+                            shape = RoundedCornerShape(12.dp)
                         )
-                        .clickable { onSelectGauge(globalIdx) }
+                        .clickable { onSelectGauge(index) }
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "#${spec.modelNumber}  ${spec.brand} — ${spec.modelName} (${spec.generationYears})",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                            Text(
-                                text = "Kadran Redline: ${spec.gaugeRedlineRpm.roundToInt()} RPM  •  Alt Modlar: ${spec.availableSubModes.joinToString(", ")}",
-                                color = Color(0xFFB0BEC5),
-                                fontSize = 12.sp
-                            )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // Renk Paleti Önizleme Rozeti
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(Color(spec.nightBgColorHex), RoundedCornerShape(10.dp))
+                                    .border(2.dp, accent, RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "#${spec.modelNumber}",
+                                    color = accent,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "${spec.brand} ${spec.modelName} (${spec.generationYears})",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                                Text(
+                                    text = "Mimari: ${spec.geometryType.name}  •  Kadran: ${spec.gaugeRedlineRpm.roundToInt()}/${spec.gaugeMaxRpm.roundToInt()} RPM  •  Modlar: ${spec.availableSubModes.joinToString("/")}",
+                                    color = Color(0xFF90A4AE),
+                                    fontSize = 12.sp
+                                )
+                            }
                         }
-                        Text(
-                            text = if (isFav) "★" else "☆",
-                            color = if (isFav) Color(0xFFFFD600) else Color.Gray,
-                            fontSize = 24.sp,
-                            modifier = Modifier
-                                .padding(horizontal = 12.dp)
-                                .clickable {
-                                    if (isFav) favoriteSkinIds.remove(spec.skinId)
-                                    else favoriteSkinIds.add(spec.skinId)
-                                }
-                        )
+                        Button(
+                            onClick = {
+                                if (isFav) favoriteSkinIds.remove(spec.skinId)
+                                else favoriteSkinIds.add(spec.skinId)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFav) Color(0xFFFFAB00) else Color(0xFF232936)
+                            )
+                        ) {
+                            Text(if (isFav) "★ Favori" else "☆ Ekle", fontSize = 12.sp)
+                        }
                     }
                 }
             }
@@ -997,9 +1717,13 @@ private fun DashboardGallery105Tab(
     }
 }
 
+// =========================================================================================
+// SEKME 3: PRO GPS, SANAL ECU, VİTES VE GÖRÜNÜM AYARLARI
+// =========================================================================================
 @Composable
 private fun AdvancedSettingsTab(
     language: AppLanguage,
+    telemetry: UnifiedTelemetryState,
     useMph: Boolean,
     onUseMphChange: (Boolean) -> Unit,
     useOemSpeedBias: Boolean,
@@ -1008,161 +1732,282 @@ private fun AdvancedSettingsTab(
     onOemBiasRatioChange: (Float) -> Unit,
     japan299Lock: Boolean,
     onJapan299LockChange: (Boolean) -> Unit,
+    stationaryDeadbandKmh: Float,
+    onStationaryDeadbandChange: (Float) -> Unit,
+    maxGpsAccuracyMeters: Float,
+    onMaxGpsAccuracyChange: (Float) -> Unit,
+    imuBlendingWeight: Float,
+    onImuBlendingWeightChange: (Float) -> Unit,
+    gearCalculationMode: GearCalculationMode,
+    onGearCalculationModeChange: (GearCalculationMode) -> Unit,
+    syncBikeWithGauge: Boolean,
+    onSyncBikeWithGaugeChange: (Boolean) -> Unit,
     rpmScalingMode: RpmScalingMode,
     onRpmScalingModeChange: (RpmScalingMode) -> Unit,
     wheelieDisplayMode: WheelieGaugeDisplayMode,
     onWheelieDisplayModeChange: (WheelieGaugeDisplayMode) -> Unit,
     autoOptimalShift: Boolean,
     onAutoOptimalShiftChange: (Boolean) -> Unit,
+    manualStage1Rpm: Float,
+    onManualStage1RpmChange: (Float) -> Unit,
+    manualStage2Rpm: Float,
+    onManualStage2RpmChange: (Float) -> Unit,
     reactionTimeMs: Float,
     onReactionTimeMsChange: (Float) -> Unit,
     acousticMicEnabled: Boolean,
     onAcousticMicChange: (Boolean) -> Unit,
     themeOverrideMode: Int,
     onThemeOverrideChange: (Int) -> Unit,
+    autoHideCockpitHud: Boolean,
+    onAutoHideCockpitHudChange: (Boolean) -> Unit,
+    oledPixelShiftEnabled: Boolean,
+    onOledPixelShiftChange: (Boolean) -> Unit,
     chromaKeyGreen: Boolean,
     onChromaKeyChange: (Boolean) -> Unit,
     onZeroCalibrateNow: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // 1. 9 Dil Seçimi (Anında Değişim)
+        // 1. CANLI GPS & SENSÖR FÜZYONU TANI VE KALİBRASYON KARTI
         item {
-            Text(
-                text = "🌍 " + LocalizationManager.getString(StringKey.SETTINGS_LANGUAGE, language),
-                color = Color(0xFFFF6600),
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(AppLanguage.entries) { lang ->
-                    FilterChipButton(
-                        label = "${lang.flagEmoji} ${lang.nativeName}",
-                        selected = lang == language,
-                        onClick = { LocalizationManager.setLanguage(lang) }
+            SettingSectionCard("🛰️ 1. Hassas GPS Hız Filtresi & Dururken Hız Fırlamasını Önleme (Zero-Drift EKF)") {
+                Text(
+                    text = "Canlı GPS Durumu: ${if (telemetry.hasGpsFix) "KİLİTLİ (${telemetry.satellitesInUse} Uydu, ±${telemetry.gpsAccuracyMeters.roundToInt()}m)" else "UYDU ARANIYOR — Hız 0.0 km/h Kilitli"}  •  Ham GPS Hızı: ${String.format(Locale.US, "%.1f", telemetry.rawGpsSpeedKmh)} km/h",
+                    color = if (telemetry.hasGpsFix) Color(0xFF00E676) else Color(0xFFFFAB00),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Durma Hız Eşiği (Stationary Deadband): ${String.format(Locale.US, "%.1f", stationaryDeadbandKmh)} km/h (Bu değerin altında hız 0.0 km/h kilitlenir)",
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+                Slider(
+                    value = stationaryDeadbandKmh,
+                    onValueChange = onStationaryDeadbandChange,
+                    valueRange = 1.0f..5.0f
+                )
+                Text(
+                    text = "Maksimum GPS Sapma Filtresi (Accuracy Gate): ±${maxGpsAccuracyMeters.roundToInt()} metre",
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+                Slider(
+                    value = maxGpsAccuracyMeters,
+                    onValueChange = onMaxGpsAccuracyChange,
+                    valueRange = 8f..40f
+                )
+                Text(
+                    text = "IMU İvmeölçer Karıştırma Oranı: %${(imuBlendingWeight * 100).roundToInt()} (%0 = Saf GPS Hızı)",
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+                Slider(
+                    value = imuBlendingWeight,
+                    onValueChange = onImuBlendingWeightChange,
+                    valueRange = 0f..1f
+                )
+                Button(
+                    onClick = onZeroCalibrateNow,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
+                ) {
+                    Text(
+                        text = "📐 Şu Anki Telefon/Gidon Açısını 0° (Dik Konum) Olarak Kalibre Et",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
 
-        // 2. Teker Derece Ölçer & Teker Metre Görünüm Ayarı
+        // 2. VİTES HESAPLAMA MODU & ALTIN KURAL
         item {
-            Text(
-                text = "🎯 " + LocalizationManager.getString(StringKey.SETTINGS_WHEELIE_MODE, language),
-                color = Color(0xFF00E676),
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_WHEELIE_SMART_AUTO, language),
-                    selected = wheelieDisplayMode == WheelieGaugeDisplayMode.SMART_AUTO_POPUP,
-                    onClick = { onWheelieDisplayModeChange(WheelieGaugeDisplayMode.SMART_AUTO_POPUP) }
-                )
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_WHEELIE_ALWAYS_ON, language),
-                    selected = wheelieDisplayMode == WheelieGaugeDisplayMode.ALWAYS_VISIBLE,
-                    onClick = { onWheelieDisplayModeChange(WheelieGaugeDisplayMode.ALWAYS_VISIBLE) }
-                )
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_WHEELIE_HIDDEN, language),
-                    selected = wheelieDisplayMode == WheelieGaugeDisplayMode.HIDDEN_OEM_PURE,
-                    onClick = { onWheelieDisplayModeChange(WheelieGaugeDisplayMode.HIDDEN_OEM_PURE) }
-                )
-            }
-        }
-
-        // 3. Saf GPS Hızı vs OEM ECE-R39 Hız Sapması ve 299 Kilidi
-        item {
-            Text(
-                text = "⚡ " + LocalizationManager.getString(StringKey.SETTINGS_CALIBRATION_SECTION, language),
-                color = Color(0xFFFF6600),
-                fontWeight = FontWeight.Bold
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(LocalizationManager.getString(StringKey.SETTINGS_OEM_ECE_R39_SPEED, language), color = Color.White)
-                Switch(checked = useOemSpeedBias, onCheckedChange = onUseOemSpeedBiasChange)
-                Text("Japon 299 km/h Kilidi", color = Color.White)
-                Switch(checked = japan299Lock, onCheckedChange = onJapan299LockChange)
-                Text("MPH Birimi", color = Color.White)
-                Switch(checked = useMph, onCheckedChange = onUseMphChange)
-            }
-            if (useOemSpeedBias) {
-                Text("OEM Sapma Oranı: +${(oemBiasRatio * 100).roundToInt()}% + 1.5 km/h", color = Color.LightGray, fontSize = 12.sp)
-                Slider(value = oemBiasRatio, onValueChange = onOemBiasRatioChange, valueRange = 0f..0.10f)
-            }
-        }
-
-        // 4. Devir (RPM) Kadran Ölçekleme Modu (Mod A vs Mod B)
-        item {
-            Text(
-                text = LocalizationManager.getString(StringKey.SETTINGS_RPM_SCALING_MODE, language),
-                color = Color(0xFFFF6600),
-                fontWeight = FontWeight.Bold
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_RPM_MODE_PROPORTIONAL, language),
-                    selected = rpmScalingMode == RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE,
-                    onClick = { onRpmScalingModeChange(RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE) }
-                )
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_RPM_MODE_NATIVE_1_TO_1, language),
-                    selected = rpmScalingMode == RpmScalingMode.MODE_B_NATIVE_1_TO_1,
-                    onClick = { onRpmScalingModeChange(RpmScalingMode.MODE_B_NATIVE_1_TO_1) }
-                )
-            }
-        }
-
-        // 5. Shift-Light Reaksiyon Süresi ve Sensör Kalibrasyonu
-        item {
-            Text(
-                text = "${LocalizationManager.getString(StringKey.SETTINGS_REACTION_TIME_MS, language)}: ${reactionTimeMs.roundToInt()} ms",
-                color = Color.White
-            )
-            Slider(value = reactionTimeMs, onValueChange = onReactionTimeMsChange, valueRange = 0f..350f)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = onZeroCalibrateNow,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
-                ) {
-                    Text(LocalizationManager.getString(StringKey.SETTINGS_ZERO_LEAN_CALIBRATE_NOW, language), color = Color.Black, fontWeight = FontWeight.Bold)
+            SettingSectionCard("⚙️ 2. Hızdan Vites & Devir Hesaplama Motoru (Virtual ECU)") {
+                Text("Vites Hesaplama Yöntemi:", color = Color.LightGray, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onGearCalculationModeChange(GearCalculationMode.AUTO_KINEMATIC_ECU) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (gearCalculationMode == GearCalculationMode.AUTO_KINEMATIC_ECU) Color(0xFFFF6600) else Color(0xFF232936)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Otomatik (Hız + İvme + Dişli)", fontSize = 11.sp)
+                    }
+                    Button(
+                        onClick = { onGearCalculationModeChange(GearCalculationMode.SEMI_AUTO_WITH_BUTTONS) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (gearCalculationMode == GearCalculationMode.SEMI_AUTO_WITH_BUTTONS) Color(0xFFFF6600) else Color(0xFF232936)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Yarı-Otomatik (+ / - Butonlu)", fontSize = 11.sp)
+                    }
                 }
-                Text(LocalizationManager.getString(StringKey.SETTINGS_ACOUSTIC_MIC_RPM, language), color = Color.White, fontSize = 12.sp)
-                Switch(checked = acousticMicEnabled, onCheckedChange = onAcousticMicChange)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Kadran Değişince Motor Profilini de Otomatik Değiştir", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = syncBikeWithGauge, onCheckedChange = onSyncBikeWithGaugeChange)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Kadran Devir Ölçekleme: Oransal Redline (Mod A) / Mutlak 1:1 (Mod B)", color = Color.White, fontSize = 13.sp)
+                    Switch(
+                        checked = rpmScalingMode == RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE,
+                        onCheckedChange = {
+                            onRpmScalingModeChange(
+                                if (it) RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE
+                                else RpmScalingMode.MODE_B_ABSOLUTE_1_TO_1
+                            )
+                        }
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("48 kHz Akustik Mikrofon DSP (Boşta Gaz & Debriyaj Tespiti)", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = acousticMicEnabled, onCheckedChange = onAcousticMicChange)
+                }
             }
         }
 
-        // 6. Gündüz / Gece Teması ve GoPro Yeşil Ekran (Chroma Key)
+        // 3. HIZ BİRİMİ, ECE-R39 SAPMASI & SHIFT-LIGHT
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_THEME_AUTO_SENSOR, language),
-                    selected = themeOverrideMode == 0,
-                    onClick = { onThemeOverrideChange(0) }
-                )
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_THEME_ALWAYS_DAY, language),
-                    selected = themeOverrideMode == 1,
-                    onClick = { onThemeOverrideChange(1) }
-                )
-                FilterChipButton(
-                    label = LocalizationManager.getString(StringKey.SETTINGS_THEME_ALWAYS_NIGHT, language),
-                    selected = themeOverrideMode == 2,
-                    onClick = { onThemeOverrideChange(2) }
-                )
-                FilterChipButton(
-                    label = "🎬 Chroma Key",
-                    selected = chromaKeyGreen,
-                    onClick = { onChromaKeyChange(!chromaKeyGreen) }
-                )
+            SettingSectionCard("🚨 3. Hız Birimi, Fabrika Kadran Sapması & Shift-Light") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onUseMphChange(false) },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (!useMph) Color(0xFFFF6600) else Color(0xFF232936)),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("KM/H (Kilometre/Saat)") }
+                    Button(
+                        onClick = { onUseMphChange(true) },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (useMph) Color(0xFFFF6600) else Color(0xFF232936)),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("MPH (Mil/Saat)") }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Fabrika OEM Kadran Sapması (ECE-R39 +%${(oemBiasRatio * 100).roundToInt()})", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = useOemSpeedBias, onCheckedChange = onUseOemSpeedBiasChange)
+                }
+                if (useOemSpeedBias) {
+                    Slider(value = oemBiasRatio, onValueChange = onOemBiasRatioChange, valueRange = 0.01f..0.10f)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Japon Centilmenlik Anlaşması: 299 km/h Dijital Kilit", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = japan299Lock, onCheckedChange = onJapan299LockChange)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Dinamik Optimal Shift-Light (Tork Eğrisi + Tepki Süresi: ${reactionTimeMs.roundToInt()} ms)", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = autoOptimalShift, onCheckedChange = onAutoOptimalShiftChange)
+                }
+                if (!autoOptimalShift) {
+                    Text("Manuel Evre 1 RPM: ${manualStage1Rpm.roundToInt()}  •  Evre 2 RPM: ${manualStage2Rpm.roundToInt()}", color = Color.LightGray, fontSize = 12.sp)
+                    Slider(value = manualStage1Rpm, onValueChange = onManualStage1RpmChange, valueRange = 4000f..16000f)
+                    Slider(value = manualStage2Rpm, onValueChange = onManualStage2RpmChange, valueRange = 4500f..17500f)
+                }
+            }
+        }
+
+        // 4. TEKER DERECE ÖLÇER, GÖRÜNÜM VE DİL SEÇİMİ
+        item {
+            SettingSectionCard("🎨 4. Teker Ölçer, Tema, Ekran ve 9 Dil Seçeneği") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onWheelieDisplayModeChange(WheelieGaugeDisplayMode.SMART_AUTO_POPUP) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (wheelieDisplayMode == WheelieGaugeDisplayMode.SMART_AUTO_POPUP) Color(0xFF00E676) else Color(0xFF232936)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Teker: Akıllı Otomatik", fontSize = 11.sp) }
+                    Button(
+                        onClick = { onWheelieDisplayModeChange(WheelieGaugeDisplayMode.ALWAYS_VISIBLE) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (wheelieDisplayMode == WheelieGaugeDisplayMode.ALWAYS_VISIBLE) Color(0xFF00E676) else Color(0xFF232936)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Teker: Her Zaman Açık", fontSize = 11.sp) }
+                    Button(
+                        onClick = { onWheelieDisplayModeChange(WheelieGaugeDisplayMode.HIDDEN_OEM_PURE) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (wheelieDisplayMode == WheelieGaugeDisplayMode.HIDDEN_OEM_PURE) Color(0xFFFF6600) else Color(0xFF232936)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Teker: Gizli (Saf OEM)", fontSize = 11.sp) }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0 to "Otomatik (Lüks)", 1 to "Gündüz Modu", 2 to "Gece Modu").forEach { (mode, title) ->
+                        Button(
+                            onClick = { onThemeOverrideChange(mode) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (themeOverrideMode == mode) Color(0xFFFF6600) else Color(0xFF232936)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) { Text(title, fontSize = 12.sp) }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Üst Kontrol Çubuğunu Sürüşte Otomatik Gizle (Ekrana Dokununca Açılır)", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = autoHideCockpitHud, onCheckedChange = onAutoHideCockpitHudChange)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("OLED Yanık Koruması (Pixel Shift) & Chroma Key (#00FF00)", color = Color.White, fontSize = 13.sp)
+                    Switch(checked = chromaKeyGreen, onCheckedChange = onChromaKeyChange)
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(AppLanguage.entries) { lang ->
+                        Button(
+                            onClick = { LocalizationManager.setLanguage(lang) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (language == lang) Color(0xFFFF6600) else Color(0xFF232936)
+                            )
+                        ) {
+                            Text("${lang.code.uppercase(Locale.ROOT)} • ${lang.nativeDisplayName}", fontSize = 12.sp)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+// =========================================================================================
+// SEKME 4: YOL BİLGİSAYARI, DRAG BOX VE TEKER REKORLARI
+// =========================================================================================
 @Composable
 private fun TripDragAndWheelieRecordsTab(
     language: AppLanguage,
@@ -1178,62 +2023,30 @@ private fun TripDragAndWheelieRecordsTab(
     longestWheelieMeters: Double,
     onResetTripAndPeaks: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TelemetryStatCard("TRIP A", String.format(Locale.US, "%.2f km", tripAKm), Color(0xFF00E5FF), Modifier.weight(1f))
-            TelemetryStatCard("TRIP B", String.format(Locale.US, "%.2f km", tripBKm), Color(0xFF00E5FF), Modifier.weight(1f))
-            TelemetryStatCard("ODOMETER", String.format(Locale.US, "%.1f km", odometerKm), Color.White, Modifier.weight(1f))
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TelemetryStatCard("TRIP A", String.format(Locale.US, "%.2f km", tripAKm), Modifier.weight(1f))
+            TelemetryStatCard("TRIP B", String.format(Locale.US, "%.2f km", tripBKm), Modifier.weight(1f))
+            TelemetryStatCard("ODOMETER", String.format(Locale.US, "%.1f km", odometerKm), Modifier.weight(1f))
+            TelemetryStatCard("MAX SPEED", "${peakSpeedKmh.roundToInt()} km/h", Modifier.weight(1f))
         }
 
-        Text(
-            text = "🏆 " + LocalizationManager.getString(StringKey.PEAK_VALUES_HEADER, language),
-            color = Color(0xFFFF6600),
-            fontWeight = FontWeight.Bold
-        )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TelemetryStatCard("PEAK RPM", "${peakRpm.roundToInt()} RPM", Modifier.weight(1f))
+            TelemetryStatCard("MAX LEAN L/R", "${peakLeanLeftDeg.roundToInt()}° L / ${peakLeanRightDeg.roundToInt()}° R", Modifier.weight(1f))
+            TelemetryStatCard("MAX WHEELIE AÇISI", String.format(Locale.US, "%.1f°", peakWheelieDeg), Modifier.weight(1f))
             TelemetryStatCard(
-                LocalizationManager.getString(StringKey.PEAK_MAX_SPEED, language),
-                "${peakSpeedKmh.roundToInt()} km/h",
-                Color(0xFFFF6600),
-                Modifier.weight(1f)
-            )
-            TelemetryStatCard(
-                LocalizationManager.getString(StringKey.PEAK_MAX_RPM, language),
-                "${peakRpm.roundToInt()} RPM",
-                Color(0xFFFF1744),
-                Modifier.weight(1f)
-            )
-            TelemetryStatCard(
-                "MAX LEAN (L / R)",
-                "${peakLeanLeftDeg.roundToInt()}° L  /  ${peakLeanRightDeg.roundToInt()}° R",
-                Color(0xFF00E5FF),
-                Modifier.weight(1f)
-            )
-        }
-
-        // Teker Derece Ölçer & Teker Metre Rekorları
-        Text(
-            text = "🔥 TEKER (WHEELIE) REKORLARI — DERECE, SÜRE (SN) & MESAFE (M)",
-            color = Color(0xFF00E676),
-            fontWeight = FontWeight.Bold
-        )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TelemetryStatCard(
-                LocalizationManager.getString(StringKey.PEAK_MAX_WHEELIE_ANGLE, language),
-                "${peakWheelieDeg.roundToInt()}°",
-                Color(0xFF00E676),
-                Modifier.weight(1f)
-            )
-            TelemetryStatCard(
-                LocalizationManager.getString(StringKey.PEAK_LONGEST_WHEELIE_TIME, language),
-                String.format(Locale.US, "%.2f sn", longestWheelieSec),
-                Color(0xFF00E676),
-                Modifier.weight(1f)
-            )
-            TelemetryStatCard(
-                LocalizationManager.getString(StringKey.PEAK_LONGEST_WHEELIE_DIST, language),
-                String.format(Locale.US, "%.1f m", longestWheelieMeters),
-                Color(0xFF00E676),
+                "EN UZUN TEKER",
+                String.format(Locale.US, "%.1f sn  •  %.1f m", longestWheelieSec, longestWheelieMeters),
                 Modifier.weight(1f)
             )
         }
@@ -1242,49 +2055,36 @@ private fun TripDragAndWheelieRecordsTab(
             onClick = onResetTripAndPeaks,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF1744))
         ) {
-            Text(LocalizationManager.getString(StringKey.ACTION_RESET, language), color = Color.White, fontWeight = FontWeight.Bold)
+            Text("🔄 TRIP A VE TÜM TEPE REKORLARINI SIFIRLA", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-private fun TelemetryStatCard(
-    title: String,
-    value: String,
-    valueColor: Color,
-    modifier: Modifier = Modifier
-) {
+private fun SettingSectionCard(title: String, content: @Composable () -> Unit) {
     Surface(
-        color = Color(0xFF151922),
+        color = Color(0xFF141820),
         shape = RoundedCornerShape(12.dp),
-        modifier = modifier.border(1.dp, Color(0xFF262D3D), RoundedCornerShape(12.dp))
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = Color(0xFFFF6600), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun TelemetryStatCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        color = Color(0xFF151A24),
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier.border(1.dp, Color(0xFF283040), RoundedCornerShape(12.dp))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(title, color = Color.LightGray, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(value, color = valueColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = Color(0xFF90A4AE), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
-
-@Composable
-private fun FilterChipButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (selected) Color(0xFFFF6600) else Color(0xFF1A1F2B),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Text(
-            text = label,
-            color = if (selected) Color.Black else Color.White,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-    }
-}
-

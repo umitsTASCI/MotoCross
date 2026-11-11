@@ -4,38 +4,42 @@
 
 namespace oemcluster::kalman {
 
-/*
- * EKSEN VE İŞARET KURALLARI (şasi ekseni: X_b ileri, Y_b sol, Z_b yukarı, sağ-el kuralı)
- *  - Pitch (phi_pitch): burun YUKARI pozitif. Sağ-el kuralına göre +w_y burnu AŞAĞI çevirir,
- *    bu yüzden d(phi_pitch)/dt = -w_y.
- *  - Lean (theta_lean): SAĞA yatış pozitif (+w_x sol tarafı kaldırır = sağa yatış).
- *  - Yaw: +w_z sola dönüş. Sola dönüşte motosiklet sola yatar (negatif theta), dolayısıyla
- *    kinematik yatış = arctan(-(v * w_yaw) / g). (Şartnamedeki formül işaret kuralından bağımsız
- *    büyüklüğü verir; burada işaret bu eksen tanımına göre uygulanır.)
- *  - İvmeölçer özgül kuvvet ölçer: dururken burun-yukarı phi eğiminde a_x = +g*sin(phi).
- */
-
 StrapdownINS15StateEKF::StrapdownINS15StateEKF() noexcept {
     reset();
 }
 
 void StrapdownINS15StateEKF::reset() noexcept {
     state_.fill(0.0);
-    // Başlangıç kovaryans değerleri
-    P_[0] = 1.0;  P_[1] = 1.0;  P_[2] = 1.0;        // Konum
-    P_[3] = 0.25; P_[4] = 0.10; P_[5] = 0.10;       // Hız
-    P_[6] = 0.01; P_[7] = 0.01; P_[8] = 0.05;       // Roll (Lean), Pitch, Yaw
-    P_[9] = 0.08; P_[10] = 0.08; P_[11] = 0.08;     // İvmeölçer Bias
-    P_[12] = 0.002; P_[13] = 0.002; P_[14] = 0.002; // Jiroskop Bias
+    P_[0] = 1.0;  P_[1] = 1.0;  P_[2] = 1.0;
+    P_[3] = 0.25; P_[4] = 0.10; P_[5] = 0.10;
+    P_[6] = 0.01; P_[7] = 0.01; P_[8] = 0.05;
+    P_[9] = 0.08; P_[10] = 0.08; P_[11] = 0.08;
+    P_[12] = 0.002; P_[13] = 0.002; P_[14] = 0.002;
 
     P_v_bax_ = 0.0;
     P_v_pitch_ = 0.0;
     lastTrueAxMs2_ = 0.0;
     prevTrueAxMs2_ = 0.0;
+    fusedLongitudinalAccelMs2_ = 0.0;
+    gnssDerivedAccelMs2_ = 0.0;
     lastTrueAyMs2_ = 0.0;
     filteredJerkXMs3_ = 0.0;
+
+    hasValidGnssFix_ = false;
+    lastGnssTimestampNanos_ = 0;
+    lastGnssSpeedMs_ = 0.0;
+    prevGnssSpeedMs_ = 0.0;
+
     ringHead_ = 0;
     ringCount_ = 0;
+}
+
+void StrapdownINS15StateEKF::setGpsFilterParameters(
+    double stationaryDeadbandKmh,
+    double imuSmoothingFactor
+) noexcept {
+    stationaryDeadbandMs_ = std::clamp(stationaryDeadbandKmh / 3.6, 0.20, 2.00);
+    imuBlendingWeight_ = std::clamp(imuSmoothingFactor, 0.05, 1.0);
 }
 
 void StrapdownINS15StateEKF::zeroLeanAndPitchNow() noexcept {
@@ -44,6 +48,7 @@ void StrapdownINS15StateEKF::zeroLeanAndPitchNow() noexcept {
 }
 
 void StrapdownINS15StateEKF::propagateSingleStep(
+    int64_t timestampNanos,
     double dt,
     const math::Vec3d& accelBike,
     const math::Vec3d& gyroBike
@@ -51,84 +56,112 @@ void StrapdownINS15StateEKF::propagateSingleStep(
     const double safeDt = std::clamp(dt, 0.0005, 0.050);
 
     // Jiroskop bias arındırılmış açısal hızlar [rad/s]
-    const double wx = gyroBike.x - state_[12]; // Roll rate (Yatış açısal hızı)
-    const double wy = gyroBike.y - state_[13]; // Pitch rate (Y_b sola bakar: +wy = burun aşağı)
-    const double wz = gyroBike.z - state_[14]; // Yaw rate (Sapma açısal hızı)
+    const double wx = gyroBike.x - state_[12];
+    const double wy = gyroBike.y - state_[13];
+    const double wz = gyroBike.z - state_[14];
 
-    const double totalAccelNorm = accelBike.norm();
-    const double gyroNorm = gyroBike.norm();
-    const bool isStationary =
-        (state_[3] < 0.30) && (gyroNorm < 0.05) && (std::abs(totalAccelNorm - GRAVITY_MPS2) < 0.30);
+    // Son geçerli GPS paketinden bu yana geçen süre [saniye]
+    const double timeSinceGnssSec = (lastGnssTimestampNanos_ > 0 && timestampNanos >= lastGnssTimestampNanos_)
+        ? static_cast<double>(timestampNanos - lastGnssTimestampNanos_) * 1e-9
+        : 999.0;
+
+    const bool gnssFresh = hasValidGnssFix_ && (timeSinceGnssSec <= 2.5);
+    const bool gnssReportsMoving = gnssFresh && (lastGnssSpeedMs_ >= stationaryDeadbandMs_);
 
     // -------------------------------------------------------------------------
-    // Yokuş eğimi (phi_pitch): jiroskop entegrasyonu (burun-yukarı pozitif => -wy)
-    // İvmeölçerden mutlak eğim düzeltmesi YALNIZCA hareketsizken yapılır; aksi halde
-    // sürekli ileri ivme "yokuş" sanılıp hız entegrasyonundan silinirdi. Hareket
-    // halinde eğim, GNSS güncellemesindeki P(v, pitch) çapraz kovaryansı ile düzeltilir.
+    // 1. PITCH (EĞİM / TEKER AÇISI) HESAPLAMASI
+    // Dururken veya GPS hareketi yokken ivmeölçerin X bileşeni yerçekimi eğimidir;
+    // böylece telefonu elde eğmek asla "ileri ivme" olarak algılanmaz!
     // -------------------------------------------------------------------------
     double pitchRad = state_[7] - wy * safeDt;
-    if (isStationary) {
-        const double accelPitch = std::asin(std::clamp(accelBike.x / GRAVITY_MPS2, -0.7, 0.7));
-        pitchRad = 0.98 * pitchRad + 0.02 * accelPitch;
+    const double accelPitch = std::asin(std::clamp(accelBike.x / GRAVITY_MPS2, -0.85, 0.85));
+
+    if (!gnssReportsMoving) {
+        // Dururken eğimi hızla yerçekimi vektörüne kilitle (telefon açısı değişse bile axTrue -> 0 kalır)
+        pitchRad = 0.90 * pitchRad + 0.10 * accelPitch;
+        // Kalan farkı da ivmeölçer bias'ına (b_ax) emdir
+        const double residualAx = accelBike.x - GRAVITY_MPS2 * std::sin(pitchRad);
+        state_[9] = 0.92 * state_[9] + 0.08 * std::clamp(residualAx, -3.5, 3.5);
+    } else {
+        // Hareket halindeyken jiroskop baskın, çok yavaş yerçekimi referansı
+        pitchRad = 0.996 * pitchRad + 0.004 * accelPitch;
     }
     state_[7] = std::clamp(pitchRad, -1.25, 1.25);
 
     // -------------------------------------------------------------------------
-    // Bölüm 2.2: Yokuş eğimi (phi_pitch) ve sensör sapması (b_ax) arındırılmış
-    // gerçek ileri ivme:
-    // a_{x,true}(t) = a_{x,bike}(t) - g * sin(phi_pitch(t)) - b_{ax}(t)
+    // 2. GERÇEK İLERİ İVME VE JERK
     // -------------------------------------------------------------------------
-    const double axTrue = accelBike.x - GRAVITY_MPS2 * std::sin(state_[7]) - state_[9];
+    const double rawAxTrue = accelBike.x - GRAVITY_MPS2 * std::sin(state_[7]) - state_[9];
     const double ayTrue = accelBike.y - state_[10];
 
-    // İvme türevi (Jerk: j_x = da_x / dt) - Bölüm 3.3 Katman 2 vites geçişi için
-    const double rawJerkX = (axTrue - prevTrueAxMs2_) / safeDt;
+    const double rawJerkX = (rawAxTrue - prevTrueAxMs2_) / safeDt;
     filteredJerkXMs3_ = 0.78 * filteredJerkXMs3_ + 0.22 * rawJerkX;
-    prevTrueAxMs2_ = axTrue;
-    lastTrueAxMs2_ = axTrue;
+    prevTrueAxMs2_ = rawAxTrue;
+    lastTrueAxMs2_ = rawAxTrue;
     lastTrueAyMs2_ = ayTrue;
 
     // -------------------------------------------------------------------------
-    // Bölüm 2.2: Anlık gerçek hız her 2.5 ms'de bir entegre edilir:
-    // v_{true}(t + dt) = v_{true}(t) + a_{x,true}(t) * dt
+    // 3. KESİN HIZ FÜZYONU (DURDUĞUN YERDE HIZ FIRLAMASINI %100 ÖNLEYEN MİMARİ)
     // -------------------------------------------------------------------------
-    double vTrue = state_[3] + axTrue * safeDt;
-
-    // Hareketsizlik (ZUPT - Zero Velocity Update): dururken mikro gürültünün hızı sürüklemesini önler
-    if (vTrue < 0.25 && std::abs(axTrue) < 0.22 && gyroNorm < 0.04) {
-        vTrue = 0.0;
-        lastTrueAxMs2_ = 0.0;
+    if (!gnssFresh) {
+        // GPS kilidi yoksa veya 2.5 saniyedir GPS verisi gelmediyse (kapalı alan / duruş):
+        // İvmeölçerin kendi kendine hız uydurmasını kesin olarak engelle!
+        state_[3] *= std::exp(-safeDt / 0.25);
+        if (state_[3] < 0.15) {
+            state_[3] = 0.0;
+        }
+        fusedLongitudinalAccelMs2_ = 0.0;
         filteredJerkXMs3_ = 0.0;
+    } else if (!gnssReportsMoving) {
+        // GPS kilitli ve GPS hızı duruş eşiğinin (örn. 2.2 km/h) altında:
+        // Hızı 0.0 km/h olarak kilitle!
+        state_[3] = 0.0;
+        fusedLongitudinalAccelMs2_ = 0.0;
+    } else {
+        // GPS kilitli ve motosiklet gerçekten hareket ediyor (v_GNSS >= deadband):
+        // GPS ivmesi ile 400 Hz IMU ivmesini harmanla
+        const double blendedAx = (1.0 - imuBlendingWeight_) * gnssDerivedAccelMs2_
+                               + imuBlendingWeight_ * std::clamp(rawAxTrue, -12.0, 12.0);
+        fusedLongitudinalAccelMs2_ = 0.85 * fusedLongitudinalAccelMs2_ + 0.15 * blendedAx;
+
+        // 400 Hz hız entegrasyonu + GPS hız çapasına yumuşak çekim
+        double vTrue = state_[3] + fusedLongitudinalAccelMs2_ * safeDt;
+        const double pullAlpha = std::clamp(safeDt / 0.18, 0.01, 0.25);
+        vTrue = (1.0 - pullAlpha) * vTrue + pullAlpha * lastGnssSpeedMs_;
+
+        // IMU'nun son gerçek GPS hızından en fazla ±(1.8 m/s *imuWeight) sapmasına izin ver
+        const double maxDeviationMs = 1.8 * imuBlendingWeight_;
+        const double minAllowedV = std::max(0.0, lastGnssSpeedMs_ - maxDeviationMs);
+        const double maxAllowedV = lastGnssSpeedMs_ + maxDeviationMs;
+        vTrue = std::clamp(vTrue, minAllowedV, maxAllowedV);
+
+        if (vTrue < stationaryDeadbandMs_ * 0.75) {
+            vTrue = 0.0;
+        }
+        state_[3] = vTrue;
     }
-    state_[3] = std::max(0.0, vTrue);
 
     // Konum entegrasyonu
     state_[0] += state_[3] * safeDt;
 
     // -------------------------------------------------------------------------
-    // Bölüm 2.4: Gerçek Viraj Yatış Açısı (True Lean Angle - theta_lean)
-    // Yatık gövdede dünya düşeyi etrafındaki gerçek sapma hızı gövde Z ve Y eksenlerine bölünür:
-    //   w_yaw = w_z * cos(theta) + w_y * sin(theta)
-    //   theta_kinematic = arctan(-(v_true * w_yaw) / g)        [işaret: sağa yatış pozitif]
-    //   theta_lean(t) = 0.985 * (theta_lean(t - dt) + w_{x,bike} * dt) + 0.015 * theta_kinematic
+    // 4. GERÇEK VİRAJ YATIŞ AÇISI (TRUE LEAN ANGLE - theta_lean)
     // -------------------------------------------------------------------------
     const double leanPrev = state_[6];
     const double yawRateWorld = wz * std::cos(leanPrev) + wy * std::sin(leanPrev);
-    state_[8] += yawRateWorld * safeDt; // Yaw açısı
+    state_[8] += yawRateWorld * safeDt;
 
     const double thetaKinematic = std::atan(-(state_[3] * yawRateWorld) / GRAVITY_MPS2);
     const double thetaGyroIntegrated = leanPrev + wx * safeDt;
     double thetaLean = 0.985 * thetaGyroIntegrated + 0.015 * thetaKinematic;
 
-    // Çok düşük hızda (< 1.5 m/s) yerçekiminin yanal bileşeninden yumuşak mutlak düzeltme
-    if (state_[3] < 1.5 && std::abs(wz) < 0.08) {
+    if (state_[3] < 2.0 && std::abs(wz) < 0.12) {
         const double staticRoll = std::atan2(accelBike.y, std::max(1.0, accelBike.z));
-        thetaLean = 0.98 * thetaLean + 0.02 * staticRoll;
+        thetaLean = 0.94 * thetaLean + 0.06 * staticRoll;
     }
-    state_[6] = std::clamp(thetaLean, -1.22, 1.22); // Maks ±70° fiziksel sınır
+    state_[6] = std::clamp(thetaLean, -1.22, 1.22);
 
-    // Kovaryans tahmin güncellemesi (hız / b_ax / pitch alt bloğu): P = F P F^T + Q
-    // F: dv/db_ax = -dt, dv/dphi = -g*cos(phi)*dt
+    // Kovaryans güncellemesi
     const double qVel = 0.035 * safeDt;
     const double qBiasA = 1e-4 * safeDt;
     const double qPitch = 5e-4 * safeDt;
@@ -148,9 +181,8 @@ void StrapdownINS15StateEKF::predict400Hz(
     const math::Vec3d& accelBike,
     const math::Vec3d& gyroBike
 ) noexcept {
-    propagateSingleStep(dtSec, accelBike, gyroBike);
+    propagateSingleStep(timestampNanos, dtSec, accelBike, gyroBike);
 
-    // OOSM Halka Tamponuna (Ring Buffer) kaydet
     EkfHistorySlot& slot = ringBuffer_[ringHead_];
     slot.timestampNanos = timestampNanos;
     slot.dtSec = dtSec;
@@ -173,12 +205,43 @@ void StrapdownINS15StateEKF::updateGnssDopplerOosm(
     double speedAccuracyMs,
     double gnssLagSec
 ) noexcept {
-    // 3D Doppler hızı: v_GNSS = sqrt(v_N^2 + v_E^2 + v_D^2)
-    const double vGnss3D = std::sqrt(
+    double vGnss3D = std::sqrt(
         vNorthMs * vNorthMs +
         vEastMs * vEastMs +
         vDownMs * vDownMs
     );
+
+    // Duruş Hız Ölü Bölgesi (Stationary Deadband):
+    // GPS hızı deadband altındaysa (örn. < 2.2 km/h) veya doğruluk hatasının içindeyse 0 kabul et
+    if (vGnss3D < stationaryDeadbandMs_ ||
+        (vGnss3D < 1.25 && speedAccuracyMs > 1.1 && vGnss3D < speedAccuracyMs * 0.95)) {
+        vGnss3D = 0.0;
+    }
+
+    // GPS hız türevinden gerçek ileri ivme hesabı (a_gps = dv_gps / dt)
+    if (hasValidGnssFix_ && lastGnssTimestampNanos_ > 0 && measurementTimestampNanos > lastGnssTimestampNanos_) {
+        const double dtGnss = std::clamp(
+            static_cast<double>(measurementTimestampNanos - lastGnssTimestampNanos_) * 1e-9,
+            0.04,
+            2.50
+        );
+        const double rawGnssAccel = (vGnss3D - lastGnssSpeedMs_) / dtGnss;
+        gnssDerivedAccelMs2_ = 0.60 * gnssDerivedAccelMs2_ + 0.40 * std::clamp(rawGnssAccel, -12.0, 12.0);
+    } else {
+        gnssDerivedAccelMs2_ = 0.0;
+    }
+
+    prevGnssSpeedMs_ = lastGnssSpeedMs_;
+    lastGnssSpeedMs_ = vGnss3D;
+    lastGnssTimestampNanos_ = measurementTimestampNanos;
+    hasValidGnssFix_ = true;
+
+    if (vGnss3D == 0.0) {
+        state_[3] = 0.0;
+        gnssDerivedAccelMs2_ = 0.0;
+        fusedLongitudinalAccelMs2_ = 0.0;
+        return;
+    }
 
     const double R_meas = std::max(0.02, speedAccuracyMs * speedAccuracyMs);
     const int64_t effectiveTimestampNanos =
@@ -189,7 +252,6 @@ void StrapdownINS15StateEKF::updateGnssDopplerOosm(
         return;
     }
 
-    // Ring Buffer içinde (t - tau_lag) anına eşit/önceki en yeni durumu bul
     size_t matchedIdx = (ringHead_ + OOSM_RING_BUFFER_SIZE - 1) % OOSM_RING_BUFFER_SIZE;
     size_t stepsBack = 0;
     for (size_t i = 0; i < ringCount_; ++i) {
@@ -201,41 +263,34 @@ void StrapdownINS15StateEKF::updateGnssDopplerOosm(
         }
     }
 
-    // (t - tau_lag) anındaki tahmin ile GNSS Doppler hızı arasındaki yenilik (Innovation)
     const double vPredictedAtLag = ringBuffer_[matchedIdx].state[3];
     const double innovation = vGnss3D - vPredictedAtLag;
 
-    // Kalman Kazancı K_k = P H^T (H P H^T + R)^-1, H = [.. 1 (v_x) ..]
     const double Pvv = P_[3];
     const double Pvb = P_v_bax_;
     const double Pvp = P_v_pitch_;
     const double S = Pvv + R_meas;
-    const double K_v = Pvv / S;
+    const double K_v = std::clamp(Pvv / S, 0.35, 0.95);
     const double K_bax = Pvb / S;
     const double K_pitch = Pvp / S;
 
-    // (t - tau_lag) anındaki durumu düzelt
     state_ = ringBuffer_[matchedIdx].state;
     state_[3] = std::max(0.0, state_[3] + K_v * innovation);
-    state_[9] = std::clamp(state_[9] + K_bax * innovation, -2.5, 2.5);     // b_ax düzeltmesi
-    state_[7] = std::clamp(state_[7] + K_pitch * innovation, -1.25, 1.25); // pitch düzeltmesi
+    state_[9] = std::clamp(state_[9] + K_bax * innovation, -2.5, 2.5);
+    state_[7] = std::clamp(state_[7] + K_pitch * innovation, -1.25, 1.25);
     ringBuffer_[matchedIdx].state = state_;
 
-    // Kovaryans güncellemesi: P = (I - K H) P
     P_[3] = std::max(1e-6, Pvv - K_v * Pvv);
     P_[9] = std::max(1e-6, P_[9] - K_bax * Pvb);
     P_[7] = std::max(1e-7, P_[7] - K_pitch * Pvp);
     P_v_bax_ = Pvb - K_v * Pvb;
     P_v_pitch_ = Pvp - K_v * Pvp;
 
-    // (t - tau_lag) anından şimdiye (t) kadar tamponlanan 400 Hz IMU verilerini yeniden entegre et.
-    // Düzeltilmiş durumlar tampona geri yazılır; aksi halde sonraki GNSS ölçümü eski
-    // (düzeltilmemiş) geçmişe dönerdi. Jerk filtresi tekrar oynatmadan etkilenmemesi için korunur.
     const double savedJerk = filteredJerkXMs3_;
     for (size_t step = stepsBack; step > 0; --step) {
         const size_t replayIdx = (ringHead_ + OOSM_RING_BUFFER_SIZE - step) % OOSM_RING_BUFFER_SIZE;
         EkfHistorySlot& slot = ringBuffer_[replayIdx];
-        propagateSingleStep(slot.dtSec, slot.accelBike, slot.gyroBike);
+        propagateSingleStep(slot.timestampNanos, slot.dtSec, slot.accelBike, slot.gyroBike);
         slot.state = state_;
     }
     filteredJerkXMs3_ = savedJerk;
@@ -249,16 +304,14 @@ double StrapdownINS15StateEKF::computeDisplayedSpeedKmh(
     bool& outIs299Locked
 ) const noexcept {
     const double vTrueKmh = state_[3] * 3.6;
-    if (vTrueKmh < 0.5) {
+    if (vTrueKmh < (stationaryDeadbandMs_ * 3.6 * 0.85)) {
         outIs299Locked = false;
         return 0.0;
     }
 
     double vDisplayKmh = vTrueKmh;
     if (useOemFactoryBiasMode) {
-        // Bölüm 2.3.2: OEM Fabrika Kalibrasyonu Modu (ECE-R39 Standardı)
-        // v_display = v_true * (1.0 + bias) + 1.5 km/s (Varsayılan +%5 + 1.5 km/s)
-        const double clampedBias = std::clamp(oemBiasRatio, 0.0, 0.10);
+        const double clampedBias = std::clamp(oemBiasRatio, 0.0, 0.12);
         vDisplayKmh = vTrueKmh * (1.0 + clampedBias) + 1.5;
     }
 

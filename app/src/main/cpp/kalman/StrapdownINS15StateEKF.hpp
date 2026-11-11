@@ -33,10 +33,17 @@ public:
     void reset() noexcept;
 
     /**
+     * Duruş (Stationary) hız ölü bölgesi (Deadband) ve GPS doğruluk eşiklerini yapılandırır.
+     */
+    void setGpsFilterParameters(
+        double stationaryDeadbandKmh,
+        double imuSmoothingFactor
+    ) noexcept;
+
+    /**
      * Bölüm 2.2: Tahmin Adımı (400 Hz / her 2.5 ms'de bir)
-     * - a_x,true(t) = a_x,bike(t) - g * sin(phi_pitch(t)) - b_ax(t)
-     * - v_true(t + dt) = v_true(t) + a_x,true(t) * dt
-     * - Bölüm 2.4: Gerçek Viraj Yatış Açısı (theta_lean) füzyonu
+     * - GPS kilidi yoksa veya duruyorsa ivmeölçer sapmasının hızı kendi kendine artırmasını %100 engeller.
+     * - Hareket halindeyken GPS hız çapası etrafında sıfır gecikmeli füzyon yapar.
      */
     void predict400Hz(
         int64_t timestampNanos,
@@ -47,10 +54,6 @@ public:
 
     /**
      * Bölüm 2.2: Güncelleme Adımı (GNSS Geldiğinde - OOSM Ring Buffer)
-     * GPS'ten gelen 3D Doppler hızı v_GNSS = sqrt(v_N^2 + v_E^2 + v_D^2),
-     * halka tampon (Ring Buffer) içindeki (t - tau_lag) anındaki durumla kıyaslanarak
-     * Kalman Kazancı K_k üzerinden v_true, b_ax ve phi_pitch sapmasını düzeltir ve
-     * tamponu şu anki zamana (t) yeniden entegre eder.
      */
     void updateGnssDopplerOosm(
         int64_t measurementTimestampNanos,
@@ -75,7 +78,7 @@ public:
     // Anlık Çıktı Erişimcileri
     double getTrueSpeedMs() const noexcept { return state_[3]; }
     double getTrueSpeedKmh() const noexcept { return state_[3] * 3.6; }
-    double getTrueLongitudinalAccelMs2() const noexcept { return lastTrueAxMs2_; }
+    double getTrueLongitudinalAccelMs2() const noexcept { return fusedLongitudinalAccelMs2_; }
     double getLateralAccelMs2() const noexcept { return lastTrueAyMs2_; }
     double getLongitudinalJerkMs3() const noexcept { return filteredJerkXMs3_; }
     double getLeanAngleRad() const noexcept { return state_[6]; }
@@ -83,24 +86,37 @@ public:
     double getPitchAngleRad() const noexcept { return state_[7]; }
     double getPitchAngleDeg() const noexcept { return state_[7] * (180.0 / 3.14159265358979323846); }
     double getAccelBiasX() const noexcept { return state_[9]; }
+    bool hasActiveGnssLock() const noexcept { return hasValidGnssFix_; }
+    double getLatestRawGnssSpeedKmh() const noexcept { return lastGnssSpeedMs_ * 3.6; }
     void zeroLeanAndPitchNow() noexcept;
 
 private:
     void propagateSingleStep(
+        int64_t timestampNanos,
         double dt,
         const math::Vec3d& accelBike,
         const math::Vec3d& gyroBike
     ) noexcept;
 
     std::array<double, 15> state_{};
-    std::array<double, 15> P_{}; // 15-durumlu hata kovaryansı (köşegen + çapraz kuplaj)
-    double P_v_bax_{0.0};        // Hız ve ivmeölçer sapması çapraz kovaryansı P(v_x, b_ax)
-    double P_v_pitch_{0.0};      // Hız ve yokuş eğimi çapraz kovaryansı P(v_x, phi_pitch)
+    std::array<double, 15> P_{};
+    double P_v_bax_{0.0};
+    double P_v_pitch_{0.0};
 
     double lastTrueAxMs2_{0.0};
     double prevTrueAxMs2_{0.0};
+    double fusedLongitudinalAccelMs2_{0.0};
+    double gnssDerivedAccelMs2_{0.0};
     double lastTrueAyMs2_{0.0};
     double filteredJerkXMs3_{0.0};
+
+    // GPS Çapası ve Hareketsizlik (Stationary ZUPT) Koruma Durumu
+    bool hasValidGnssFix_{false};
+    int64_t lastGnssTimestampNanos_{0};
+    double lastGnssSpeedMs_{0.0};
+    double prevGnssSpeedMs_{0.0};
+    double stationaryDeadbandMs_{0.61}; // Varsayılan 2.2 km/h (0.61 m/s) altı = 0 km/h
+    double imuBlendingWeight_{0.35};    // 0.0 = Saf GPS, 1.0 = Agresif IMU
 
     // OOSM Halka Tampon (Ring Buffer)
     std::array<EkfHistorySlot, OOSM_RING_BUFFER_SIZE> ringBuffer_{};
@@ -109,4 +125,3 @@ private:
 };
 
 } // namespace oemcluster::kalman
-

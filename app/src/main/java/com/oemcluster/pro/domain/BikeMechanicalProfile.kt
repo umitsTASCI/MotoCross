@@ -1,6 +1,7 @@
 package com.oemcluster.pro.domain
 
 import kotlinx.serialization.Serializable
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -14,9 +15,9 @@ enum class EngineFiringConfig(
     val cylinderCount: Int,
     val firingPulsesPerCrankRev: Double
 ) {
-    SINGLE_1_CYL("Single Cylinder (Tek Silindir 4T)", 1, 0.5),
+    SINGLE_1_CYL("Single Cylinder (1-Cyl 4T)", 1, 0.5),
     PARALLEL_TWIN_180("Parallel Twin 180°", 2, 1.0),
-    PARALLEL_TWIN_270("Parallel Twin 270° (Crossplane Twin)", 2, 1.0),
+    PARALLEL_TWIN_270("Parallel Twin 270° (CP2)", 2, 1.0),
     PARALLEL_TWIN_360("Parallel Twin 360°", 2, 1.0),
     V_TWIN_90_75("V-Twin / L-Twin (75°/90°)", 2, 1.0),
     V_TWIN_45_60("V-Twin (45°/60° Cruiser)", 2, 1.0),
@@ -38,22 +39,34 @@ data class TireSpecification(
     val widthMm: Double,            // W_mm (Örn: 150.0, 180.0, 190.0, 200.0)
     val aspectRatioPercent: Double, // AspectRatio_% (Örn: 60.0, 55.0)
     val rimDiameterInch: Double,    // D_rim_inch (Örn: 17.0)
-    val crownRadiusMm: Double = widthMm * 0.52, // Toroidal sırt eğrilik yarıçapı r_crown [mm]
-    val staticSquishFactor: Double = 0.972      // Statik yük ezilme katsayısı k_squish
+    val crownRadiusMm: Double = widthMm * 0.52,
+    val staticSquishFactor: Double = 0.972
 ) {
-    /**
-     * 3.1.1. Yüksüz Yarıçap (R_unloaded) [mm]:
-     * R_unloaded = ((D_rim_inch * 25.4) / 2.0) + (W_mm * (AspectRatio_% / 100.0))
-     */
     val unloadedRadiusMm: Double
         get() = ((rimDiameterInch * 25.4) / 2.0) + (widthMm * (aspectRatioPercent / 100.0))
+
+    val loadedRadiusMeters: Double
+        get() = (unloadedRadiusMm * staticSquishFactor) / 1000.0
 
     fun toSpecString(): String =
         "${widthMm.toInt()}/${aspectRatioPercent.toInt()} ZR${rimDiameterInch.toInt()}"
 
     companion object {
+        val COMMON_REAR_TIRES = listOf(
+            TireSpecification(130.0, 70.0, 17.0),
+            TireSpecification(140.0, 70.0, 17.0),
+            TireSpecification(150.0, 60.0, 17.0),
+            TireSpecification(160.0, 60.0, 17.0),
+            TireSpecification(180.0, 55.0, 17.0),
+            TireSpecification(190.0, 55.0, 17.0),
+            TireSpecification(200.0, 55.0, 17.0),
+            TireSpecification(200.0, 60.0, 17.0),
+            TireSpecification(240.0, 45.0, 17.0),
+            TireSpecification(150.0, 70.0, 18.0),
+            TireSpecification(130.0, 70.0, 12.0)
+        )
+
         fun parse(spec: String, defaultSquish: Double = 0.972): TireSpecification {
-            // Örn: "150/60 R17" veya "190/55 ZR17"
             val regex = Regex("""(\d{3})\s*/\s*(\d{2})\s*[A-Za-z]*\s*(\d{2})""")
             val match = regex.find(spec.trim())
             return if (match != null) {
@@ -84,10 +97,9 @@ data class TorqueCurvePoint(
 )
 
 /**
- * ALTIN KURAL (Bölüm 1.2):
+ * ALTIN KURAL:
  * Kullanıcının "Garajım (My Bike Profile)" menüsünde ayarladığı motosiklet özellikleri
  * uygulamanın TEK GERÇEK VERİ KAYNAĞIDIR (Single Source of Truth).
- * Ekranda seçilen 105 gösterge modeli tamamen görsel birer arayüzdür (UI Skin).
  */
 @Serializable
 data class BikeMechanicalProfile(
@@ -99,7 +111,7 @@ data class BikeMechanicalProfile(
     val frontSprocketTeeth: Int,        // Z_front
     val rearSprocketTeeth: Int,         // Z_rear
     val primaryReductionRatio: Double,  // i_primary
-    val gearRatios: List<Double>,       // i_gear[1..6] (1-indeksli erişim için 6 eleman)
+    val gearRatios: List<Double>,       // i_gear[1..N]
     val rearTire: TireSpecification,
     val frontTire: TireSpecification,
     val idleRpm: Double,
@@ -110,25 +122,63 @@ data class BikeMechanicalProfile(
     val redlineRpm: Double,
     val revLimiterRpm: Double,
     val totalMassKg: Double,            // Motosiklet + Sürücü ağırlığı (kg)
-    val dragCoefficientAreaCdA: Double = 0.34, // Aerodinamik direnç katsayısı * Ön Alan (m^2)
-    val torqueCurve: List<TorqueCurvePoint>
+    val dragCoefficientAreaCdA: Double = 0.34,
+    val torqueCurve: List<TorqueCurvePoint>,
+    val displacementCc: Int = 600,
+    val fuelTankLiters: Double = 15.0
 ) {
-    /**
-     * İkincil (Zincir/Kayış/Şaft) redüksiyon oranı: Z_rear / Z_front
-     */
+    val id: String
+        get() = profileId
+
     val finalDriveRatio: Double
         get() = rearSprocketTeeth.toDouble() / max(1, frontSprocketTeeth).toDouble()
 
     /**
-     * Verilen herhangi bir RPM değerinde motor krank torkunu (Nm)
-     * parçalı doğrusal / Hermite interpolasyon ile döndürür.
+     * Verilen vites (1..6) ve motor devri (RPM) için gerçek motosiklet hızını (km/h) hesaplar.
      */
+    fun computeSpeedKmhAtRpm(gearOneBased: Int, rpm: Double): Double {
+        if (gearRatios.isEmpty()) return 0.0
+        val idx = (gearOneBased - 1).coerceIn(0, gearRatios.size - 1)
+        val gRatio = gearRatios[idx]
+        val totalReduction = primaryReductionRatio * finalDriveRatio * gRatio
+        if (totalReduction <= 0.001) return 0.0
+        val wheelRpm = rpm / totalReduction
+        val wheelCircumferenceMeters = 2.0 * PI * rearTire.loadedRadiusMeters
+        val speedMs = (wheelRpm * wheelCircumferenceMeters) / 60.0
+        return speedMs * 3.6
+    }
+
+    /**
+     * Verilen vites (1..6) ve hız (km/h) için gerçek motor devrini (RPM) hesaplar.
+     */
+    fun computeRpmAtSpeedKmh(gearOneBased: Int, speedKmh: Double): Double {
+        if (gearRatios.isEmpty() || speedKmh <= 0.1) return idleRpm
+        val idx = (gearOneBased - 1).coerceIn(0, gearRatios.size - 1)
+        val gRatio = gearRatios[idx]
+        val totalReduction = primaryReductionRatio * finalDriveRatio * gRatio
+        val wheelCircumferenceMeters = 2.0 * PI * rearTire.loadedRadiusMeters
+        val speedMs = speedKmh / 3.6
+        val wheelRpm = (speedMs * 60.0) / max(0.5, wheelCircumferenceMeters)
+        return wheelRpm * totalReduction
+    }
+
+    /**
+     * Kullanıcının girdiği "Bu viteste Redline/Kesici devrinde ulaşılan hız (km/h)" değerinden
+     * şanzıman dişli oranını (i_gear) tersine mühendislikle otomatik hesaplar!
+     */
+    fun computeGearRatioFromTopSpeedKmh(targetSpeedKmh: Double, atRpm: Double = redlineRpm): Double {
+        val safeSpeedMs = max(3.0, targetSpeedKmh / 3.6)
+        val wheelCircumferenceMeters = 2.0 * PI * rearTire.loadedRadiusMeters
+        val wheelRpm = (safeSpeedMs * 60.0) / max(0.5, wheelCircumferenceMeters)
+        val baseDrive = max(0.1, primaryReductionRatio * finalDriveRatio)
+        return (atRpm / max(1.0, wheelRpm * baseDrive)).coerceIn(0.45, 4.50)
+    }
+
     fun interpolateEngineTorqueNm(rpm: Double): Double {
-        if (torqueCurve.isEmpty()) return maxTorqueNm * 0.8
+        if (torqueCurve.isEmpty()) return maxTorqueNm * 0.85
         val sorted = torqueCurve.sortedBy { it.rpm }
         if (rpm <= sorted.first().rpm) return sorted.first().torqueNm
         if (rpm >= sorted.last().rpm) {
-            // Kesici üzerinde ateşleme kesintisi nedeniyle tork hızla düşer
             val excess = rpm - sorted.last().rpm
             return max(0.0, sorted.last().torqueNm * (1.0 - (excess / 800.0)))
         }
@@ -144,12 +194,6 @@ data class BikeMechanicalProfile(
         return maxTorqueNm
     }
 
-    /**
-     * Bölüm 3.4.1: Matematiksel Optimum Vites Değiştirme Noktası (RPM_opt[n])
-     * Mevcut vitesteki tekerlek itme kuvvetinin, bir üst vitesteki tekerlek itme kuvvetine
-     * eşitlendiği (veya kesiciye / redline'a ulaştığı) devir:
-     * T_engine(RPM_opt[n]) * i_gear[n] = T_engine(RPM_opt[n] * (i_gear[n+1] / i_gear[n])) * i_gear[n+1]
-     */
     fun computeOptimalShiftRpmForGear(gearIndexOneBased: Int): Double {
         val gearCount = gearRatios.size
         if (gearIndexOneBased < 1 || gearIndexOneBased >= gearCount) {
@@ -173,7 +217,6 @@ data class BikeMechanicalProfile(
             val rpmAfterUpshift = testRpm * gearStepRatio
             val wheelTorqueNext = interpolateEngineTorqueNm(rpmAfterUpshift) * iNext
 
-            // Mevcut vitesteki tekerlek torku bir üst vitesin altına düştüğü ilk devir veya kesişim noktası
             val diff = wheelTorqueCurrent - wheelTorqueNext
             if (diff <= 0.0) {
                 bestRpm = testRpm
@@ -189,19 +232,13 @@ data class BikeMechanicalProfile(
         return if (crossoverFound) {
             min(bestRpm, redlineRpm)
         } else {
-            // Eğer mevcut viteste tork eğrisi redline'a kadar üst vitesten yüksek kalıyorsa,
-            // optimum vites noktası Redline devridir.
             redlineRpm
         }
     }
 
-    /**
-     * Tüm vitesler (1..6) için matematiksel optimum vites değiştirme devirlerini döndürür.
-     */
     fun computeAllOptimalShiftRpms(): DoubleArray {
         return DoubleArray(gearRatios.size) { idx ->
             computeOptimalShiftRpmForGear(idx + 1)
         }
     }
 }
-
