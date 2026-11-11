@@ -1,0 +1,72 @@
+name: MotoCross Android APK & C++20 NDK Build
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build MotoCross APK (Kotlin + C++20 NDK)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Accept Android SDK Licenses & Ensure NDK/CMake
+        run: |
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build Debug APK (105 OEM Clusters + C++20 400Hz EKF Engine)
+        run: gradle assembleDebug --stacktrace --no-daemon
+
+      - name: Prepare APK Package
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk MotoCross-v1.0.0.apk
+
+      - name: Upload MotoCross APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MotoCross-APK
+          path: MotoCross-v1.0.0.apk
+          retention-days: 90
+
+      - name: Publish Automatic GitHub Release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "🏍️ MotoCross v1.0.0 (OEM-Cluster Pro) — Official Android APK"
+          body: |
+            ## 🏍️ MotoCross (`OEM-Cluster Pro`) v1.0.0 — Ready-to-Install Android APK
+            **105 Factory Motorcycle Instrument Clusters • 400 Hz C++20 NDK 15-State EKF • 48 kHz Acoustic FFT • 120 Hz Virtual ECU • Wheelie Angle & Wheelie Meter (`°`, `s`, `m`)**
+
+            ---
+
+            ### 📲 Direct Installation on Android:
+            1. Download **`MotoCross-v1.0.0.apk`** from the **Assets** section below directly to your Android smartphone or tablet.
+            2. Tap the downloaded APK file and allow installation from unknown sources if prompted.
+            3. Launch **MotoCross** and grant **Location (High-Accuracy GPS Doppler)** and **Microphone (Acoustic FFT RPM)** permissions.
+          files: MotoCross-v1.0.0.apk
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

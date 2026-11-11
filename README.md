@@ -1,0 +1,225 @@
+<div align="center">
+
+<img src="docs/motocross-banner.svg" alt="MotoCross — OEM-Cluster Pro Banner" width="100%" />
+
+# 🏍️ MotoCross (`OEM-Cluster Pro`)
+### 100% Authentic Motorcycle Instrument Cluster Simulator (105 Models), 400 Hz C++20 NDK Sensor Fusion, Virtual ECU Telemetry Engine & Wheelie Analyzer
+
+[![Android APK Build](https://img.shields.io/github/actions/workflow/status/umitsTASCI/MotoCross/android-apk.yml?branch=main&style=for-the-badge&logo=android&label=APK%20BUILD&color=00E676)](https://github.com/umitsTASCI/MotoCross/actions)
+[![Download Latest APK](https://img.shields.io/github/v/release/umitsTASCI/MotoCross?style=for-the-badge&logo=github&label=DOWNLOAD%20APK&color=FF6600)](https://github.com/umitsTASCI/MotoCross/releases/latest)
+[![Platform](https://img.shields.io/badge/ANDROID-8.0%20--%2015%2B%20(API%2026--36)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#)
+[![Engine](https://img.shields.io/badge/NDK%20CORE-C%2B%2B20%20%E2%80%A2%20400%20Hz%20EKF-00E5FF?style=for-the-badge&logo=cplusplus&logoColor=white)](#)
+[![Render](https://img.shields.io/badge/RENDER-120%20FPS%20CANVAS-FFD600?style=for-the-badge)](#)
+[![Models](https://img.shields.io/badge/OEM%20CLUSTERS-105%20MODELS%20%E2%80%A2%2012%20BRANDS-FF1744?style=for-the-badge)](#)
+
+</div>
+
+---
+
+## 🎯 Vision & Core Engineering Philosophy
+
+**MotoCross (`OEM-Cluster Pro`)** is **not** a basic windshield HUD projection app. It is a pixel-perfect **Real Motorcycle Instrument Cluster & Virtual ECU Telemetry Engine** that transforms any handlebar-mounted Android smartphone or tablet into the factory original instrument cluster of **105 iconic motorcycle models** (*OEM TFT displays, Negative Black LCDs, Positive Transflective LCDs, and Analog-Digital Hybrid Tachometers*), powered by a **400 Hz C++20 NDK Strapdown Inertial Navigation Engine** and **48 kHz Acoustic DSP**.
+
+> [!IMPORTANT]
+> ### 🏆 THE GOLDEN RULE: Strict Separation of Mechanical Bike Profile vs. Visual Gauge Skin
+> 1. **My Garage (`BikeMechanicalProfile`) = Single Source of Truth:** The motorcycle mechanical specifications configured in **My Garage** (*front/rear sprockets, 1st–6th gear ratios, primary reduction, tire dimensions, idle RPM, redline/rev-limiter RPM, and torque/power curves*) serve as the sole physical source of truth.
+> 2. **105 Instrument Clusters = Pure Visual UI Skins (`DeclarativeGaugeSpec`):** Any dashboard selected from the **105-model catalog** (*e.g., BMW S1000RR, Yamaha YZF-R1, KTM 390 Duke, Ducati Panigale V4, Suzuki Hayabusa*) functions strictly as a high-precision visual UI skin.
+> 3. **Real-World Scenario:** If you configure your own motorcycle as a **KTM 390 Duke** (or Yamaha MT-07, Honda CBR250R) in *My Garage* and select the **BMW S1000RR** or **Yamaha YZF-R6** instrument cluster on screen, the S1000RR dashboard displays **your motorcycle's true speed, true gear, and true RPM**, and triggers the S1000RR Shift-Light flasher at **your motorcycle's optimal shift RPM**!
+
+---
+
+## 📲 How to Install the App (Step-by-Step APK Installation Guide)
+
+You can install **MotoCross** on your Android smartphone or tablet using any of the **4 methods** below:
+
+### 🚀 Method 1: Direct APK Download & Sideload on Your Phone *(Easiest — No PC Required)*
+
+Pre-built, ready-to-install `.apk` packages are published directly in this repository's **Releases** section:
+
+1. **Download the APK from GitHub Releases:**
+   * Open **[Releases](https://github.com/umitsTASCI/MotoCross/releases/latest)** on your Android phone (or click the orange **`DOWNLOAD APK`** badge at the top of this page).
+   * Under **Assets**, tap **`MotoCross-v1.0.0.apk`** to download it directly to your device.
+2. **Alternative Download via GitHub Actions Artifacts:**
+   * Go to the **[Actions](https://github.com/umitsTASCI/MotoCross/actions)** tab, select the latest green **`MotoCross Android APK & C++20 NDK Build`** workflow run, and download the **`MotoCross-APK`** artifact bundle at the bottom of the page.
+3. **Install on Android:**
+   * Tap the downloaded **`MotoCross-v1.0.0.apk`** file in your phone's notification bar or **Downloads** folder.
+   * If prompted with *"For your security, your phone currently isn't allowed to install unknown apps from this source"*, tap **Settings → Allow from this source**, navigate back, and tap **Install**.
+   * Upon first launch, grant **Location (`ACCESS_FINE_LOCATION` — High-Accuracy GPS Doppler)** and **Microphone (`RECORD_AUDIO` — Acoustic FFT RPM Detection)** permissions.
+
+---
+
+### 💻 Method 2: One-Click Build & Install via Android Studio
+
+If you want to build from source or customize the C++20 NDK / Kotlin codebase:
+
+1. Install **[Android Studio](https://developer.android.com/studio)** (Ladybug / Meerkat or newer).
+2. Open **SDK Manager → SDK Tools** and ensure the following components are installed:
+   * `Android SDK Platform 36`
+   * `NDK (Side by side)`
+   * `CMake (3.22.1+)`
+3. Clone this repository and open it in Android Studio:
+   ```bash
+   git clone https://github.com/umitsTASCI/MotoCross.git
+   cd MotoCross
+   ```
+4. On your Android device, go to **Settings → About Phone**, tap **Build Number** 7 times to unlock **Developer Options**, and enable **USB Debugging**.
+5. Connect your phone via USB and click the green **Run (`▶ app`)** button in Android Studio.
+
+---
+
+### ⚡ Method 3: Command Line Build (Gradle & ADB)
+
+You can compile the APK and install it directly from your terminal:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/umitsTASCI/MotoCross.git
+cd MotoCross
+
+# 2. Build the Debug APK
+./gradlew assembleDebug
+```
+
+The compiled APK will be generated at:
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+To install it immediately onto a USB-connected Android device via **ADB**:
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+---
+
+### 🏍️ Method 4: Handlebar Mounting & First-Ride Calibration
+
+1. **Select Your Bike Profile (`My Garage`):** Open the top quick-control drawer, tap **`CONTROL CENTER → My Garage`**, and select your motorcycle model (*or enter custom sprocket teeth, gear ratios, tire size, and redline RPM*).
+2. **Choose Any of the 105 Clusters:** Open the **`105 Gauges`** tab to filter by brand/model, or **swipe left/right** directly on the dashboard screen to switch clusters at 120 FPS.
+3. **Zero-Lean & 3D Handlebar Mount Calibration:** Mount your phone securely on the handlebar, hold the motorcycle upright on level ground, and tap **`Zero Lean (0°)`** in the top bar. On your first forward acceleration, the **PCA (Principal Component Analysis)** engine automatically aligns your phone's arbitrary mount angle with the motorcycle's chassis axes.
+
+---
+
+## 🧠 System Architecture & Real-Time Data Flow
+
+```mermaid
+flowchart LR
+    subgraph SENSORS["1. Hardware Sensor Layer"]
+        IMU["400 Hz 6-Axis IMU\n(Accelerometer + Gyroscope)"]
+        GNSS["1-10 Hz GNSS Doppler\n(3D Velocity + Lag Compensation)"]
+        MIC["48 kHz PCM Microphone\n(Exhaust/Engine Acoustic Signal)"]
+        LUX["Ambient Light (Lux)\n(Day / Night / Tunnel Hysteresis)"]
+    end
+
+    subgraph NDK["2. C++20 NDK Core Engine"]
+        CAL["3D Mount Calibrator\n(Static Gravity + Dynamic PCA)"]
+        EKF["15-State Extended Kalman Filter\n(512-Slot OOSM Ring Buffer)"]
+        FFT["4096-Pt Radix-2 FFT\n+ 4-Harmonic Product Spectrum"]
+        ECU["120 Hz Virtual ECU Physics\n• Toroidal Tire R_eff(θ, v)\n• 3-Layer Gear & Clutch State Machine\n• Wheelie Analyzer (°, s, m)"]
+    end
+
+    subgraph UI["3. 120 FPS Jetpack Compose & Canvas"]
+        STATE["UnifiedTelemetryState\n(39-Double Zero-GC JNI Buffer)"]
+        SKINS["105 OEM Cluster Skins\n(12 Brands • 12 Geometry Families)"]
+    end
+
+    IMU --> CAL --> EKF
+    GNSS --> EKF
+    MIC --> FFT --> ECU
+    EKF --> ECU
+    LUX --> ECU
+    ECU --> STATE --> SKINS
+```
+
+---
+
+## 🔥 Core Engineering Highlights
+
+### 1. Zero-Latency Velocity, True Lean Angle & 15-State EKF (`400 Hz C++20 NDK`)
+* **Automatic 3D Handlebar Mount Alignment (`MountCalibrator`):** Aligns arbitrary phone mounting angles $(X_p, Y_p, Z_p)$ to the motorcycle chassis frame $(X_b \text{ [Forward]}, Y_b \text{ [Left]}, Z_b \text{ [Up]})$ using static gravity normalization for $\mathbf{Z}_b$ and **Principal Component Analysis (PCA)** on initial forward acceleration vectors for $\mathbf{X}_b$.
+* **15-State Extended Kalman Filter with 512-Slot OOSM Ring Buffer (`StrapdownINS15StateEKF`):** Eliminates the 150–400 ms lag of standard 1–10 Hz GPS receivers by integrating pitch-compensated forward acceleration every 2.5 ms (400 Hz). When a delayed GNSS 3D Doppler velocity measurement arrives, the filter rewinds to the historical ring-buffer slot ($t_k - \delta t_{\text{lag}}$), applies the Kalman innovation, and replays all intermediate 400 Hz IMU frames up to the present timestamp.
+* **ECE-R39 Factory Bias vs. Pure GPS Speed & 299 km/h Japanese Lock:** Switchable between **100% True GPS Speed** and **OEM Factory Calibration (`+4.5%` to `+5.5%` + `1.5 km/h`)**, complete with the iconic **`299 km/h`** digital readout lock on post-2000 Japanese superbikes.
+
+### 2. Bosch 6D IMU-Grade Wheelie Angle & Wheelie Meter (`Wheelie Analyzer`)
+* **Road-Slope Compensated True Wheelie Pitch (`°`):** Tracks continuous road gradient ($\theta_{\text{road}}$) during normal riding and freezes the road slope estimate the instant front-wheel lift-off is detected ($\dot{\theta}_{\text{pitch}} > 12^\circ/\text{s}$ or $\theta_{\text{wheelie}} = \theta_{\text{pitch}} - \theta_{\text{road}} \ge 7.5^\circ$ at $v \ge 8\text{ km/h}$), preventing steep uphill roads from triggering false wheelie readings.
+* **Live Wheelie Duration (`s`) & Distance (`m`):** Integrates real-time airtime duration (`currentWheelieDurationSec`) and true wheelie distance (`currentWheelieDistanceMeters` via $\int v_{\text{true}}\,dt$).
+* **Balance Point (`35°–47°` Sweet Spot) & 3.2s Landing Summary Hold:** Renders a symmetrical right-wing telemetry pod featuring a semi-circular pitch gauge with a highlighted **`35°–47°` Balance Point** zone, dynamic chassis vector graphic, live angle, timer, and distance badges. Holds your summary on screen for **3.2 seconds** after touchdown and records session peaks in the **Trip & Drag Box** tab.
+* **3 Display Modes:** `Smart Auto-Popup (Default — Pure OEM until wheelie lift-off)`, `Always Visible`, or `Hidden (OEM Pure)`.
+
+### 3. Real RPM, Gear & Clutch Detection Without OBD / CAN-Bus
+* **Toroidal Dynamic Tire Radius $R_{\text{eff}}(\theta, v)$:** Accounts for tire shoulder roll-off under cornering lean angle $\theta$, static load squish $\kappa_{\text{squish}}$, and high-speed centrifugal growth $\gamma_{\text{centrifugal}} \cdot v^2$:
+  $$R_{\text{eff}}(\theta, v) = \left[ R_{\text{unloaded}} - r_{\text{crown}} \cdot (1 - \cos|\theta|) \right] \cdot (1 - \kappa_{\text{squish}}) + \gamma_{\text{centrifugal}} \cdot v^2$$
+* **48 kHz Acoustic FFT + 4-Harmonic Product Spectrum (`AcousticFftRpmDetector`):** Samples engine/exhaust acoustics via a 4096-point Radix-2 Cooley-Tukey FFT with Hann windowing to extract fundamental firing frequency $f_0$, capturing free-revving RPM in Neutral (`N`), clutch-in coasting, and downshift rev-matching blips.
+* **3-Layer Hybrid Gear & Clutch State Machine:**
+  * **Layer 1 (Acoustic Divergence):** Detects clutch disengagement when acoustic RPM drops toward `idle_rpm` while wheel speed remains high.
+  * **Layer 2 (400 Hz Longitudinal Jerk):** Detects 40–350 ms torque interruption valleys ($\Delta a_x < -1.8\text{ m/s}^2$) during upshifts and engine-braking spikes during downshifts.
+  * **Layer 3 (Torque-Curve Feasibility):** Validates candidate gears against the active bike profile's aerodynamic drag and wheel torque curve.
+
+### 4. All 7 Authentic Physical Gauge Reactions Across 105 Clusters
+1. **Ignition Boot & Needle Sweep:** Brand-authentic splash logos (*"READY TO RACE"*, *"M-Power"*, *"R-Spirit"*), full warning lamp self-check, and 0 → Redline → Idle sweep (`888` / `299` speed test).
+2. **2nd-Order Spring-Damper Needle Physics:** Sub-stepped semi-implicit Euler solver ($\omega_n = 28\text{ rad/s}$ for stepper-motor analog needles; $\omega_n = 350\text{ rad/s}$ for crisp TFT bar graphs).
+3. **Upshift RPM Drop & 1.8s Peak-Hold Trail:** Instant physical RPM drop matching the next gear ratio $G_{i+1}/G_i$, leaving a 1.8-second trailing peak marker.
+4. **Downshift & Rev-Match Blip:** Instant jump to higher lower-gear RPM with Stage 1/2 Shift-Light activation.
+5. **Clutch-In Free Drop:** Smooth damped decay to `idle_rpm` when the clutch is pulled in motion.
+6. **2-Stage Shift-Light & 8 Hz Full Color Inversion:** Full screen color inversion on KTM/Ducati TFTs, converging dual-side LEDs on Yamaha R1, and M-Sport flashers on BMW S1000RR.
+7. **12 Hz Over-Rev Limiter Bounce:** Simulated fuel/ignition cut jitter ($\pm 150\text{ RPM}$) and 12 Hz red strobe at `rev_limiter_rpm`.
+
+---
+
+## 🏍️ Complete Catalog of 105 Motorcycle Instrument Clusters (12 Brands)
+
+| # | Brand Group | Count | Included Models & Cluster Architectures |
+| :--- | :--- | :---: | :--- |
+| **1** | **KTM** | **10 Models** | `125 Duke`, `200 Duke`, `250 Duke (LCD & TFT)`, `390 Duke (2013 LCD, 2017–2023 TFT, 2024 Gen-3)`, `790 Duke`, `890 Duke R`, `1290/1390 Super Duke R EVO`, `RC 390` |
+| **2** | **Yamaha** | **12 Models** | `MT-07 (Negative LCD & 5" TFT)`, `MT-09 SP`, `MT-10 SP`, `YZF-R1 / R1M (Track Mode)`, `YZF-R6 (16.5k Analog + LCD)`, `YZF-R7`, `YZF-R3`, `YZF-R25`, `XSR900`, `Ténéré 700 (Rally Tower)`, `TMAX 560` |
+| **3** | **Honda** | **12 Models** | `CBR1000RR-R Fireblade SP`, `CBR600RR`, `CBR650R / CB650R`, `CBR500R`, `CBR250R (Blue/Amber Hybrid)`, `CBR250RR (MC51)`, `CB1000R Black Edition`, `CRF1100L Africa Twin`, `NC750X`, `MSX125 Grom`, `Forza 750` |
+| **4** | **Kawasaki** | **10 Models** | `Ninja ZX-10R / ZX-10RR`, `Ninja H2 / H2R (Supercharger Boost)`, `Ninja ZX-6R (636)`, `Ninja ZX-4RR (16,000 RPM)`, `Ninja 650`, `Ninja 400`, `Z900`, `Z1000 (Sugomi LED)`, `Z650`, `Versys 1000 SE` |
+| **5** | **BMW Motorrad** | **10 Models** | `S1000RR (6.5" M-Sport Pure Ride)`, `M1000RR (M-Competition)`, `S1000R`, `S1000XR`, `R1250GS / R1300GS Connectivity`, `F900R / F900XR`, `G310R / G310GS`, `R nineT (Dual Analog Cups)` |
+| **6** | **Ducati** | **10 Models** | `Panigale V4 / V4S / V4R (Track Evo)`, `Panigale V2`, `Streetfighter V4 S`, `Monster 937`, `Monster 821 / 1200`, `Hypermotard 950 SP`, `Multistrada V4 S`, `Diavel V4`, `Scrambler 800`, `Supersport 950 S` |
+| **7** | **Suzuki** | **9 Models** | `Hayabusa Gen-3 (Symmetrical 4-Analog + TFT)`, `GSX-R1000R (Negative LCD)`, `GSX-R750 / 600 (K8/L1 Analog + Gear)`, `GSX-8S / GSX-8R`, `GSX-S1000`, `SV650`, `V-Strom 1050DE / 800DE`, `DR-Z400SM` |
+| **8** | **Aprilia** | **7 Models** | `RSV4 Factory 1100`, `Tuono V4 Factory`, `RS 660`, `Tuono 660`, `RS 457`, `Tuareg 660`, `Dorsoduro 900` |
+| **9** | **Triumph** | **7 Models** | `Street Triple 765 RS`, `Speed Triple 1200 RS`, `Daytona 675R`, `Trident 660`, `Tiger 900 / 1200 Rally Pro`, `Bonneville T120`, `Rocket 3 R` |
+| **10** | **MV Agusta & Husqvarna** | **6 Models** | `MV Agusta F3 800 RR`, `Brutale 1000 RR`, `Superveloce 800`, `Husqvarna Svartpilen / Vitpilen 401`, `Norden 901`, `701 Supermoto` |
+| **11** | **CFMoto, Benelli & Royal Enfield** | **6 Models** | `CFMoto 450SR / 450NK (Curved 5" TFT)`, `800NK`, `Benelli TNT 600i`, `TRK 502X / 702X`, `Royal Enfield Interceptor 650`, `Himalayan 450 (Tripper Dash)` |
+| **12** | **Harley-Davidson, Indian & Vespa** | **6 Models** | `Harley Sportster S`, `Pan America 1250`, `Iron 883`, `Indian FTR 1200 R Carbon`, `Vespa GTS 300 SuperTech`, `Piaggio Beverly 400` |
+
+---
+
+## 📂 Project Structure
+
+```text
+MotoCross/
+├── .github/workflows/
+│   └── android-apk.yml                  # Automated CI/CD APK build & GitHub Release publisher
+├── app/
+│   ├── build.gradle.kts                 # Android + C++20 NDK / CMake configuration
+│   └── src/main/
+│       ├── AndroidManifest.xml          # 400 Hz Sensor, GNSS, Audio permissions & MotoCross setup
+│       ├── cpp/                         # C++20 NDK Real-Time Telemetry Core
+│       │   ├── CMakeLists.txt
+│       │   ├── math/Matrix3x3.*         # 3x3 Matrix algebra & Jacobi eigensolver (PCA)
+│       │   ├── kalman/MountCalibrator.* # Automatic 3D handlebar mount alignment
+│       │   ├── kalman/StrapdownINS15StateEKF.* # 400 Hz 15-State EKF + 512-Slot OOSM Ring Buffer
+│       │   ├── acoustic/AcousticFftRpmDetector.* # 48 kHz 4096-Pt Radix-2 FFT + 4-Harmonic HPS
+│       │   ├── physics/VirtualEcuPhysicsEngine.* # 120 Hz Virtual ECU, Gear/Clutch & Wheelie Analyzer
+│       │   └── jni/TelemetryJniBridge.cpp        # Lock-Free 39-Double Zero-Allocation JNI Bridge
+│       ├── java/com/oemcluster/pro/
+│       │   ├── MainActivity.kt                   # 120 FPS Main Host, Live Simulator & 4-Tab Control Center
+│       │   ├── catalog/OemGaugeCatalog105.kt     # Declarative catalog of 105 OEM clusters across 12 brands
+│       │   ├── data/BikeDatabaseRepository.kt    # Factory motorcycle mechanical presets & custom tuning store
+│       │   ├── domain/BikeMechanicalProfile.kt   # Sprockets, transmission, toroidal tire & torque curve model
+│       │   ├── domain/UnifiedTelemetryState.kt   # Unidirectional telemetry packet (Speed, RPM, Gear, Lean, Wheelie)
+│       │   ├── i18n/LocalizationManager.kt       # Instant 9-language runtime localization
+│       │   ├── renderer/OemClusterCanvasRenderer.kt # 120 FPS Custom Canvas renderer & Wheelie Pod
+│       │   └── sensors/                          # 400 Hz IMU, GNSS Doppler, Lux & 48 kHz PCM Audio managers
+│       └── res/                                  # MotoCross adaptive vector launcher icons & themes
+└── docs/
+    └── motocross-banner.svg             # Vector hero banner
+```
+
+---
+
+## 🌍 Instant 9-Language Runtime Localization
+
+Switch languages instantaneously inside **Advanced Settings** without restarting the application:
+`🇬🇧 English` • `🇹🇷 Türkçe` • `🇩🇪 Deutsch` • `🇮🇹 Italiano` • `🇪🇸 Español` • `🇫🇷 Français` • `🇯🇵 日本語` • `🇵🇹 Português` • `🇷🇺 Русский`

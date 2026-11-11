@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MotoCross - Android 13+ temalı (monokrom) ikon katmanı -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="6"
+        android:pathData="M35.615,72.385 A26,26 0 0,1 66.206,31.043 M67.778,31.951 A26,26 0 0,1 78.993,46.833 M79.432,48.594 A26,26 0 0,1 72.385,72.385" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M73.068,41.139 L55.007,55.492 L49.026,57.355 L52.993,52.508 Z M50,54 A4,4 0 1,1 58,54 A4,4 0 1,1 50,54 Z M51.8,37 A2.2,2.2 0 1,1 56.2,37 A2.2,2.2 0 1,1 51.8,37 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M41.5,76 L41.5,64.5 L46.75,71 L52,64.5 L52,76 M56,64.5 L66.5,76 M66.5,64.5 L56,76" />
+</vector>
+

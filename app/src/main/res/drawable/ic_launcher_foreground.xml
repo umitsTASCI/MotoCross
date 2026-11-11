@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MotoCross uygulama logosu - ön katman (adaptif ikon, 108x108 viewport, güvenli bölge r=33).
+  Tasarım: 270° OEM devir kadranı (beyaz → turuncu shift bölgesi → kırmızı kesici bölgesi),
+  ibre turuncu shift bölgesinde (STAGE_1), üstte kırmızı Shift-LED, altta "MX" monogramı.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Dış kadran çerçevesi -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#3A3F47"
+        android:strokeWidth="1.2"
+        android:pathData="M22,54 A32,32 0 1,1 86,54 A32,32 0 1,1 22,54 Z" />
+
+    <!-- Devir yayı: normal bölge (135° → 298°) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F5F5F5"
+        android:strokeWidth="6"
+        android:strokeLineCap="butt"
+        android:pathData="M35.615,72.385 A26,26 0 0,1 66.206,31.043" />
+
+    <!-- Devir yayı: vites atma bölgesi / KTM turuncusu (302° → 344°) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF6600"
+        android:strokeWidth="6"
+        android:strokeLineCap="butt"
+        android:pathData="M67.778,31.951 A26,26 0 0,1 78.993,46.833" />
+
+    <!-- Devir yayı: kesici / redline bölgesi (348° → 45°) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF1E1E"
+        android:strokeWidth="6"
+        android:strokeLineCap="butt"
+        android:pathData="M79.432,48.594 A26,26 0 0,1 72.385,72.385" />
+
+    <!-- Shift-Light LED -->
+    <path
+        android:fillColor="#FF1E1E"
+        android:pathData="M51.8,37 A2.2,2.2 0 1,1 56.2,37 A2.2,2.2 0 1,1 51.8,37 Z" />
+
+    <!-- İbre (326°, shift bölgesinde) -->
+    <path
+        android:fillColor="#FF5A00"
+        android:pathData="M73.068,41.139 L55.007,55.492 L49.026,57.355 L52.993,52.508 Z" />
+
+    <!-- İbre göbeği -->
+    <path
+        android:fillColor="#15181D"
+        android:strokeColor="#FF5A00"
+        android:strokeWidth="1.5"
+        android:pathData="M50,54 A4,4 0 1,1 58,54 A4,4 0 1,1 50,54 Z" />
+
+    <!-- "M" -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F5F5F5"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M41.5,76 L41.5,64.5 L46.75,71 L52,64.5 L52,76" />
+
+    <!-- "X" -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF5A00"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:pathData="M56,64.5 L66.5,76 M66.5,64.5 L56,76" />
+</vector>
+

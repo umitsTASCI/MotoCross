@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="motocross_black">#FF07080A</color>
+    <color name="motocross_carbon">#FF15181D</color>
+    <color name="motocross_orange">#FFFF5A00</color>
+    <color name="motocross_red">#FFFF1E1E</color>
+    <color name="motocross_white">#FFF5F5F5</color>
+</resources>
+
