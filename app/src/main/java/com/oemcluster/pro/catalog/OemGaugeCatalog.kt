@@ -43,7 +43,7 @@ enum class ShiftLedPattern {
 }
 
 data class DeclarativeGaugeSpec(
-    val modelNumber: Int,               // 1..270
+    val modelNumber: Int,               // 1..307
     val skinId: String,
     val brand: String,
     val modelName: String,
@@ -253,7 +253,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             25, "honda_cbr1000rr_sc77", "Honda", "CBR1000RR Fireblade (SC77 TFT)", "2017–2019",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
-            13000.0, 15000.0, true, true, "TOTAL CONTROL // CBR", listOf("Street", "Circuit", "Mechanic"),
+            13500.0, 15000.0, true, true, "TOTAL CONTROL // CBR", listOf("Street", "Circuit", "Mechanic"),
             0xFFF2F2F2, 0xFF101218, 0xFF080A0F, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -899,14 +899,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             111, "bajaj_pulsar_150", "Bajaj", "Pulsar 150", "2023",
             GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8500.0, 9500.0, false, true, "PULSAR // 150 SPIRIT", listOf("Street", "Urban"),
+            9500.0, 10500.0, false, true, "PULSAR // 150 SPIRIT", listOf("Street", "Urban"),
             0xFF0C0F18, 0xFFFFFFFF, 0xFF080A10, 0xFFFF6A00, 0xFFFF6A00,
             0xFFFF3D00, 0xFF1F0A00, 0xFFFF6A00
         ),
         DeclarativeGaugeSpec(
             112, "bajaj_avenger_street_220", "Bajaj", "Avenger Street 220", "2020",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            7000.0, 8500.0, false, false, "AVENGER // CRUISER", listOf("Cruiser", "Urban"),
+            9000.0, 10000.0, false, false, "AVENGER // CRUISER", listOf("Cruiser", "Urban"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFB74D, 0xFFFF6A00,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -1238,7 +1238,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             156, "yamaha_yz250f", "Yamaha", "YZ250F", "2024",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10000.0, false, true, "YZ // 250F MOTOCROSS", listOf("Motocross", "Race"),
+            13500.0, 14500.0, false, true, "YZ // 250F MOTOCROSS", listOf("Motocross", "Race"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFF00B0FF,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -1397,7 +1397,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             177, "bmw_f900gs", "BMW Motorrad", "F900GS", "2024",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8500.0, 9500.0, false, true, "GS // 900 GRANITE", listOf("Offroad", "Touring"),
+            9000.0, 10000.0, false, true, "GS // 900 GRANITE", listOf("Offroad", "Touring"),
             0xFFF4F6FA, 0xFF0B0E14, 0xFF06080E, 0xFFFFFFFF, 0xFF0066B1,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -1432,7 +1432,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             182, "bmw_r1250rt", "BMW Motorrad", "R 1250 RT", "2019",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            7500.0, 8500.0, false, true, "RT // SPORT TOURING", listOf("Touring", "Pure Ride"),
+            9000.0, 10000.0, false, true, "RT // SPORT TOURING", listOf("Touring", "Pure Ride"),
             0xFFF4F6FA, 0xFF0B0E14, 0xFF06080E, 0xFFFFFFFF, 0xFF0066B1,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -1977,7 +1977,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             253, "suzuki_vstrom_250", "Suzuki", "V-Strom 250", "2017",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10000.0, false, true, "V-STROM // 250 ADVENTURE", listOf("Adventure", "Urban"),
+            9500.0, 11000.0, false, true, "V-STROM // 250 ADVENTURE", listOf("Adventure", "Urban"),
             0xFFF5F5F5, 0xFF0D1016, 0xFF07090D, 0xFFFFFFFF, 0xFF0091EA,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -2012,14 +2012,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             258, "mv_agusta_f4_750_oro", "MV Agusta", "F4 750 Oro", "1999",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            12500.0, 14500.0, false, true, "F4 // 750 ORO MASTERPIECE", listOf("Street", "Track"),
+            13500.0, 14500.0, false, true, "F4 // 750 ORO MASTERPIECE", listOf("Street", "Track"),
             0xFF0B0D12, 0xFFFFFFFF, 0xFF06070A, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             259, "kawasaki_zx12r", "Kawasaki", "Ninja ZX-12R", "2000",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            10500.0, 13000.0, false, true, "NINJA // ZX-12R THUNDER", listOf("Retro", "Sport"),
+            11500.0, 13000.0, false, true, "NINJA // ZX-12R THUNDER", listOf("Retro", "Sport"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF64DD17,
             0xFFFFB300, 0xFF64DD17, 0xFFFFFFFF
         ),

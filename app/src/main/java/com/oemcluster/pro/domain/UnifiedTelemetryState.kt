@@ -80,7 +80,7 @@ enum class WheelieGaugeDisplayMode {
 /**
  * Bölüm 7.1: Tek Yönlü Veri Akışı (Strict Unidirectional Data Flow) Çıktısı:
  * Sensors (GNSS + 400Hz IMU + Mic) -> Physics & Virtual ECU Engine (User's Active Bike Profile)
- * -> UnifiedTelemetryState -> Active Dashboard Renderer (Any of the 270 OEM Skins).
+ * -> UnifiedTelemetryState -> Active Dashboard Renderer (Any of the 307+ OEM Skins).
  */
 @Serializable
 data class UnifiedTelemetryState(

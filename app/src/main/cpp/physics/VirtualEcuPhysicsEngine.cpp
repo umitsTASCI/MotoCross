@@ -332,7 +332,7 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
         shiftConfirmSec_ = 0.0;
         pendingGear_ = 0;
     } else if (bike_.transmissionTypeCode == 3) {
-        // CVT Varyatörlü Otomatik (Maxi-Scooter): Sürekli değişken kasnak oranı
+        // CVT Varyatörlü Otomatik Şanzıman: Sürekli değişken kasnak oranı
         isClutchPulled_ = false;
         currentGear_ = 1;
         resolvedGear = 1;

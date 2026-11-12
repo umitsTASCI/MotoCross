@@ -114,7 +114,7 @@ data class TorqueCurvePoint(
  * ALTIN KURAL (Bölüm 1.2):
  * Kullanıcının "Garajım (My Bike Profile)" menüsünde ayarladığı motosiklet özellikleri
  * uygulamanın TEK GERÇEK VERİ KAYNAĞIDIR (Single Source of Truth).
- * Ekranda seçilen 270 gösterge modeli tamamen görsel birer arayüzdür (UI Skin).
+ * Ekranda seçilen 307+ gösterge modeli tamamen görsel birer arayüzdür (UI Skin).
  */
 @Serializable
 data class BikeMechanicalProfile(

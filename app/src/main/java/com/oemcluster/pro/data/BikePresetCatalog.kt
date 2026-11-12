@@ -9,15 +9,16 @@ import com.oemcluster.pro.domain.TorqueCurvePoint
 import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
- * 270 OEM göstergenin arkasındaki 270 gerçek motosiklet/motorlu taşıt profili.
+ * 307+ OEM göstergenin arkasındaki tüm dünya motosikletlerinin (scooter ve otomobil hariç)
+ * gerçek mühendislik profilleri.
  *
  * Her profilin kimliği (profileId) gösterge kataloğundaki skinId ile birebir aynıdır.
- * Böylece galeride gördüğünüz her kadranın arkasında o modele ait dişli oranları,
- * birincil redüksiyon, ön/arka dişli, lastik ebadı, tork eğrisi, ağırlık ve
- * aerodinamik direnç bulunur. Değerler fabrika verilerine en yakın mühendislik
- * değerleridir; kullanıcı garajda her birini değiştirebilir.
+ * Böylece galeride gördüğünüz her kadranın arkasında o modele ait vites sayısı, dişli oranları,
+ * birincil redüksiyon, ön/arka dişli, lastik ebadı, çap x strok, sıkıştırma oranı, dingil mesafesi,
+ * yakıt deposu, son aktarma tipi ve fiziksel tork eğrisi bulunur.
  */
 object BikePresetCatalog {
 
@@ -94,29 +95,38 @@ object BikePresetCatalog {
         b("yamaha_tenere_700_raid", "Yamaha", 2022, "Tenere 700 World Raid", EngineFiringConfig.PARALLEL_TWIN_270,
             listOf(2.846, 2.125, 1.632, 1.300, 1.091, 0.964), 1.925, 16 to 46, "150/70R18", "90/90R21",
             1300.0, 6500.0, 68.0, 9000.0, 72.0, 10000.0, 10500.0, 226.0, 0.46),
-        b("yamaha_tmax_560", "Yamaha", 2022, "TMAX 560 Tech MAX", EngineFiringConfig.PARALLEL_TWIN_270,
-            listOf(2.800, 2.200, 1.700, 1.350, 1.100, 0.900), 1.000, 30 to 60, "160/60R15", "120/70R15",
-            1300.0, 5250.0, 55.7, 7500.0, 47.0, 8500.0, 9000.0, 238.0, 0.42),
 
-        // =========================== HONDA (14) ===========================
+        // =========================== HONDA ===========================
         b("honda_cbr1000rrr_sp", "Honda", 2020, "CBR1000RR-R Fireblade SP", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.538, 1.941, 1.579, 1.350, 1.217, 1.115), 1.630, 16 to 43, "200/55R17", "120/70R17",
-            1300.0, 12000.0, 113.0, 14000.0, 217.5, 14800.0, 15200.0, 201.0, 0.285),
+            1300.0, 12000.0, 113.0, 14000.0, 217.5, 14800.0, 15200.0, 201.0, 0.285,
+            16.1, 6.2, 1000, TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN,
+            81.0, 48.5, 13.4, 1455.0, 830.0, true),
         b("honda_cbr1000rr_sc77", "Honda", 2017, "CBR1000RR Fireblade (SC77)", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.286, 1.778, 1.500, 1.333, 1.200, 1.091), 1.717, 16 to 42, "190/50R17", "120/70R17",
-            1300.0, 11000.0, 114.0, 13000.0, 189.0, 13000.0, 13500.0, 196.0, 0.30),
+            1300.0, 11000.0, 114.0, 13000.0, 189.0, 13500.0, 14000.0, 196.0, 0.30,
+            16.0, 5.9, 999, TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN,
+            76.0, 55.1, 13.0, 1405.0, 820.0, true),
         b("honda_cbr600rr_2024", "Honda", 2024, "CBR600RR (2024)", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.750, 2.000, 1.667, 1.444, 1.286, 1.150), 2.111, 16 to 42, "180/55R17", "120/70R17",
-            1350.0, 11250.0, 66.0, 14000.0, 121.0, 15000.0, 15500.0, 194.0, 0.30),
+            1350.0, 11250.0, 66.0, 14000.0, 121.0, 15000.0, 15500.0, 194.0, 0.30,
+            18.0, 5.5, 599, TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN,
+            67.0, 42.5, 12.2, 1370.0, 820.0, true),
         b("honda_cbr600rr_pc40", "Honda", 2007, "CBR600RR (PC40)", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.750, 2.000, 1.667, 1.444, 1.286, 1.150), 2.111, 16 to 42, "180/55R17", "120/70R17",
-            1350.0, 11250.0, 66.0, 13500.0, 118.0, 15000.0, 15500.0, 194.0, 0.30),
+            1350.0, 11250.0, 66.0, 13500.0, 118.0, 15000.0, 15500.0, 194.0, 0.30,
+            18.0, 5.6, 599, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN,
+            67.0, 42.5, 12.2, 1375.0, 820.0, false),
         b("honda_cbr650r_lcd", "Honda", 2019, "CBR650R / CB650R (LCD)", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.438, 1.714, 1.333, 1.111, 0.960, 0.852), 2.118, 15 to 42, "180/55R17", "120/70R17",
-            1250.0, 8500.0, 63.0, 12000.0, 94.0, 12000.0, 12500.0, 208.0, 0.34),
+            1250.0, 8500.0, 63.0, 12000.0, 94.0, 12500.0, 13000.0, 208.0, 0.34,
+            15.4, 4.9, 649, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN,
+            67.0, 46.0, 11.6, 1450.0, 810.0, true),
         b("honda_cbr650r_2024_tft", "Honda", 2024, "CBR650R / CB650R (E-Clutch)", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.438, 1.714, 1.333, 1.111, 0.960, 0.852), 2.118, 15 to 42, "180/55R17", "120/70R17",
-            1250.0, 8500.0, 63.0, 12000.0, 94.0, 12000.0, 12500.0, 209.0, 0.34),
+            1250.0, 8500.0, 63.0, 12000.0, 94.0, 12500.0, 13000.0, 209.0, 0.34,
+            15.4, 4.9, 649, TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN,
+            67.0, 46.0, 11.6, 1450.0, 810.0, true),
         b("honda_cbr250rr_mc51", "Honda", 2017, "CBR250RR SP (MC51)", EngineFiringConfig.PARALLEL_TWIN_180,
             listOf(2.667, 1.933, 1.611, 1.381, 1.217, 1.077), 2.818, 14 to 41, "140/70R17", "110/70R17",
             1400.0, 11000.0, 25.0, 13000.0, 42.0, 14000.0, 14500.0, 168.0, 0.31),
@@ -128,19 +138,9 @@ object BikePresetCatalog {
             1250.0, 8250.0, 104.0, 10500.0, 143.0, 11500.0, 12000.0, 212.0, 0.33),
         b("honda_africa_twin_1100", "Honda", 2020, "CRF1100L Africa Twin", EngineFiringConfig.PARALLEL_TWIN_270,
             listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 2.000, 16 to 42, "150/70R18", "90/90R21",
-            1300.0, 6250.0, 105.0, 7500.0, 101.0, 9000.0, 9500.0, 236.0, 0.44),
-        b("honda_xadv_750", "Honda", 2021, "X-ADV 750 / Forza 750", EngineFiringConfig.PARALLEL_TWIN_270,
-            listOf(2.667, 1.882, 1.529, 1.294, 1.130, 1.000), 2.000, 17 to 41, "160/60R15", "120/70R15",
-            1300.0, 4750.0, 69.0, 6750.0, 58.0, 7500.0, 8000.0, 236.0, 0.40),
-        b("honda_forza_350", "Honda", 2021, "Forza 250 / 350", EngineFiringConfig.SINGLE_1_CYL,
-            listOf(2.800, 2.200, 1.700, 1.350, 1.100, 0.900), 1.000, 30 to 58, "150/70R14", "120/70R15",
-            1600.0, 5250.0, 31.5, 7500.0, 29.0, 8000.0, 8500.0, 191.0, 0.40),
-        b("honda_pcx_160", "Honda", 2021, "PCX 125 / 160", EngineFiringConfig.SINGLE_1_CYL,
-            listOf(2.800, 2.200, 1.700, 1.350, 1.100, 0.900), 1.000, 30 to 56, "130/70R14", "110/70R14",
-            1700.0, 6500.0, 14.7, 8500.0, 15.8, 9000.0, 9500.0, 132.0, 0.38),
-        b("honda_s2000_ap1_f1", "Honda", 1999, "S2000 (AP1)", EngineFiringConfig.INLINE_FOUR_SCREAMER,
-            listOf(2.727, 1.737, 1.333, 1.087, 0.921, 0.775), 1.000, 10 to 41, "245/40R17", "215/45R17",
-            900.0, 7500.0, 208.0, 8300.0, 240.0, 9000.0, 9200.0, 1250.0, 0.52),
+            1300.0, 6250.0, 105.0, 7500.0, 101.0, 9000.0, 9500.0, 236.0, 0.44,
+            18.8, 4.9, 1084, TransmissionType.DCT_DUAL_CLUTCH, FinalDriveType.CHAIN,
+            92.0, 81.5, 10.1, 1575.0, 850.0, true),
 
         // ========================= KAWASAKI (12) =========================
         b("kawasaki_zx10r_2021", "Kawasaki", 2021, "Ninja ZX-10R / ZX-10RR", EngineFiringConfig.INLINE_FOUR_SCREAMER,
@@ -204,10 +204,9 @@ object BikePresetCatalog {
             1500.0, 7250.0, 28.0, 9250.0, 34.0, 10500.0, 11000.0, 158.0, 0.39),
         b("bmw_r_ninet", "BMW Motorrad", 2014, "R nineT / R12 nineT", EngineFiringConfig.BOXER_TWIN,
             listOf(2.375, 1.696, 1.296, 1.065, 0.905, 0.784), 1.824, 17 to 40, "180/55R17", "120/70R17",
-            1200.0, 6000.0, 116.0, 7250.0, 110.0, 8500.0, 9000.0, 222.0, 0.40),
-        b("bmw_c400x_gt", "BMW Motorrad", 2019, "C400X / C400GT", EngineFiringConfig.SINGLE_1_CYL,
-            listOf(2.800, 2.200, 1.700, 1.350, 1.100, 0.900), 1.000, 30 to 58, "150/70R14", "120/70R15",
-            1600.0, 5750.0, 35.0, 7500.0, 34.0, 8000.0, 8500.0, 206.0, 0.42),
+            1200.0, 6000.0, 116.0, 7250.0, 110.0, 8500.0, 9000.0, 222.0, 0.40,
+            18.0, 5.3, 1170, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT,
+            101.0, 73.0, 12.0, 1487.0, 805.0, true),
         b("bmw_hp4_race", "BMW Motorrad", 2017, "HP4 Race", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.647, 2.091, 1.727, 1.500, 1.360, 1.261), 1.652, 17 to 45, "200/55R17", "120/70R17",
             1400.0, 11000.0, 113.0, 13900.0, 215.0, 14800.0, 15200.0, 171.0, 0.285),
@@ -289,11 +288,8 @@ object BikePresetCatalog {
         b("aprilia_tuareg_660", "Aprilia", 2022, "Tuareg 660", EngineFiringConfig.PARALLEL_TWIN_270,
             listOf(2.600, 2.000, 1.667, 1.444, 1.286, 1.150), 2.000, 15 to 46, "150/70R18", "90/90R21",
             1350.0, 6750.0, 70.0, 9250.0, 80.0, 10000.0, 10500.0, 207.0, 0.42),
-        b("aprilia_sr_gt_200", "Aprilia", 2022, "SR GT 200", EngineFiringConfig.SINGLE_1_CYL,
-            listOf(2.800, 2.200, 1.700, 1.350, 1.100, 0.900), 1.000, 30 to 55, "130/70R13", "110/70R16",
-            1600.0, 7250.0, 17.0, 8500.0, 17.7, 9500.0, 10000.0, 152.0, 0.38),
 
-        // ========================= TRIUMPH (6) ==========================
+        // ========================= TRIUMPH ==========================
         b("triumph_street_triple_765_rs", "Triumph", 2020, "Street Triple 765 RS", EngineFiringConfig.INLINE_TRIPLE_120,
             listOf(2.500, 1.842, 1.500, 1.285, 1.136, 1.043), 1.854, 16 to 48, "180/55R17", "120/70R17",
             1250.0, 9500.0, 80.0, 12000.0, 130.0, 12650.0, 13100.0, 187.0, 0.36),
@@ -343,36 +339,41 @@ object BikePresetCatalog {
             listOf(2.667, 1.857, 1.421, 1.143, 0.956, 0.840), 2.667, 14 to 41, "140/70R17", "110/70R17",
             1500.0, 7000.0, 25.0, 8750.0, 29.0, 10500.0, 11000.0, 155.0, 0.33),
 
-        // ========================= BENELLI (1) =========================
+        // ========================= BENELLI =========================
         b("benelli_tnt600i_trk702", "Benelli", 2021, "TNT 600i / TRK 702X", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 2.000, 15 to 43, "180/55R17", "120/70R17",
-            1300.0, 10500.0, 54.0, 11500.0, 80.0, 11500.0, 12000.0, 227.0, 0.40),
+            1300.0, 10500.0, 54.0, 11500.0, 80.0, 12000.0, 12500.0, 227.0, 0.40),
 
-        // ================== ROYAL ENFIELD (2) ==================
+        // ================== ROYAL ENFIELD ==================
         b("royal_enfield_himalayan_450", "Royal Enfield", 2024, "Himalayan 450", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.750, 1.938, 1.545, 1.304, 1.136, 1.036), 2.000, 15 to 43, "140/80R17", "90/90R21",
-            1400.0, 5500.0, 40.0, 8000.0, 39.5, 8500.0, 9000.0, 196.0, 0.44),
+            1400.0, 5500.0, 40.0, 8000.0, 39.5, 8500.0, 9000.0, 196.0, 0.44,
+            17.0, 3.6, 452, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN,
+            84.0, 81.5, 11.5, 1510.0, 825.0, true),
         b("royal_enfield_gt650", "Royal Enfield", 2018, "Continental GT 650 / Interceptor 650", EngineFiringConfig.PARALLEL_TWIN_270,
             listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 2.000, 15 to 38, "130/70R18", "100/90R18",
-            1200.0, 5150.0, 52.0, 7150.0, 47.0, 7500.0, 8000.0, 211.0, 0.42),
+            1200.0, 5150.0, 52.0, 7150.0, 47.0, 7500.0, 8000.0, 211.0, 0.42,
+            12.5, 4.3, 648, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN,
+            78.0, 67.8, 9.5, 1398.0, 820.0, true),
 
-        // ==================== HARLEY-DAVIDSON (2) ====================
+        // ==================== HARLEY-DAVIDSON ====================
         b("harley_sportster_s", "Harley-Davidson", 2021, "Sportster S", EngineFiringConfig.V_TWIN_45_60,
             listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 1.600, 17 to 42, "180/70R16", "130/70R18",
-            1200.0, 6000.0, 125.0, 7500.0, 121.0, 9000.0, 9500.0, 228.0, 0.40),
+            1200.0, 6000.0, 125.0, 7500.0, 121.0, 9000.0, 9500.0, 228.0, 0.40,
+            11.8, 5.1, 1252, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.BELT,
+            105.0, 72.3, 12.0, 1520.0, 765.0, true),
         b("harley_iron_883_48", "Harley-Davidson", 2014, "Iron 883 / Forty-Eight", EngineFiringConfig.V_TWIN_45_60,
-            listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 1.600, 17 to 43, "150/80R16", "100/90R19",
-            1200.0, 3750.0, 70.0, 5500.0, 51.0, 6000.0, 6500.0, 255.0, 0.42),
-
-        // ========================= VESPA (1) =========================
-        b("vespa_gts_300_supertech", "Vespa", 2020, "GTS 300 SuperTech", EngineFiringConfig.SINGLE_1_CYL,
-            listOf(2.800, 2.200, 1.700, 1.350, 1.100, 0.900), 1.000, 30 to 54, "130/70R12", "120/70R12",
-            1600.0, 5250.0, 26.0, 7750.0, 23.8, 8500.0, 9000.0, 160.0, 0.42, 8.5, 4.4, 278),
+            listOf(2.615, 1.895, 1.545, 1.300, 1.130), 1.600, 17 to 43, "150/80R16", "100/90R19",
+            1200.0, 3750.0, 70.0, 5500.0, 51.0, 6000.0, 6500.0, 255.0, 0.42,
+            12.5, 4.8, 883, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.BELT,
+            76.2, 96.8, 9.0, 1515.0, 760.0, false),
 
         // ============================ TVS (7) ============================
         b("tvs_apache_rtr_200_4v", "TVS", 2024, "Apache RTR 200 4V", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.917, 1.857, 1.333, 1.050, 0.880), 2.818, 13 to 45, "130/70R17", "90/90R17",
-            1650.0, 7250.0, 17.25, 9000.0, 20.5, 10000.0, 10500.0, 152.0, 0.34, 12.0, 4.1, 198),
+            1650.0, 7250.0, 17.25, 9000.0, 20.5, 10000.0, 10500.0, 152.0, 0.34,
+            12.0, 3.1, 198, TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN,
+            66.0, 57.8, 9.7, 1353.0, 800.0, true),
         b("tvs_apache_rtr_160_4v", "TVS", 2023, "Apache RTR 160 4V", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.909, 1.909, 1.375, 1.045, 0.832), 2.818, 15 to 42, "130/70R17", "90/90R17",
             1600.0, 7250.0, 14.73, 9250.0, 17.4, 10000.0, 10500.0, 145.0, 0.33, 12.0, 3.8, 160),
@@ -413,10 +414,10 @@ object BikePresetCatalog {
             1500.0, 6500.0, 35.0, 8800.0, 40.0, 10000.0, 10500.0, 193.0, 0.36, 13.0, 3.6, 373),
         b("bajaj_pulsar_150", "Bajaj", 2023, "Pulsar 150", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.909, 1.909, 1.375, 1.045, 0.832), 2.727, 14 to 40, "130/70R17", "90/90R17",
-            1550.0, 6500.0, 13.4, 8500.0, 14.0, 8500.0, 9000.0, 147.0, 0.35, 15.0, 3.3, 150),
+            1550.0, 6500.0, 13.4, 8500.0, 14.0, 9500.0, 10000.0, 147.0, 0.35, 15.0, 3.3, 150),
         b("bajaj_avenger_street_220", "Bajaj", 2020, "Avenger Street 220", EngineFiringConfig.SINGLE_1_CYL,
-            listOf(2.857, 1.895, 1.526, 1.300, 1.130, 0.964), 2.400, 15 to 36, "130/90-15", "90/90-15",
-            1500.0, 7000.0, 17.5, 8400.0, 19.0, 7000.0, 7500.0, 172.0, 0.38, 14.0, 3.5, 220),
+            listOf(2.857, 1.895, 1.526, 1.300, 1.130), 2.400, 15 to 36, "130/90-15", "90/90-17",
+            1500.0, 7000.0, 17.5, 8400.0, 19.0, 9000.0, 9500.0, 163.0, 0.38, 13.0, 3.5, 220),
         b("bajaj_pulsar_n150", "Bajaj", 2022, "Pulsar N150", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.909, 1.909, 1.375, 1.045, 0.832), 2.727, 14 to 40, "130/70R17", "90/90R17",
             1550.0, 7000.0, 13.5, 8500.0, 14.5, 9000.0, 9500.0, 152.0, 0.34, 14.0, 3.3, 150),
@@ -561,7 +562,8 @@ object BikePresetCatalog {
             1200.0, 5500.0, 28.6, 6400.0, 24.0, 7000.0, 7500.0, 184.0, 0.38, 9.0, 4.2, 399),
         b("yamaha_yz250f", "Yamaha", 2024, "YZ250F", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.800, 2.000, 1.571, 1.333, 1.130), 3.100, 13 to 49, "100/90R19", "80/100R21",
-            1800.0, 7000.0, 33.0, 9500.0, 46.0, 9000.0, 9500.0, 107.0, 0.43, 6.0, 4.3, 250),
+            1800.0, 10000.0, 27.0, 12500.0, 42.0, 13500.0, 14000.0, 107.0, 0.43, 6.2, 4.3, 250,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 77.0, 53.6, 13.8, 1475.0, 970.0, false),
         b("yamaha_tenere_700_xtreme", "Yamaha", 2024, "Ténéré 700 Extreme", EngineFiringConfig.PARALLEL_TWIN_270,
             listOf(2.846, 2.125, 1.632, 1.300, 1.091, 0.964), 1.925, 16 to 46, "150/70R18", "90/90R21",
             1300.0, 6500.0, 68.0, 9000.0, 72.0, 10000.0, 10500.0, 227.0, 0.46, 16.0, 4.0, 689),
@@ -581,7 +583,8 @@ object BikePresetCatalog {
             1300.0, 7000.0, 61.0, 8500.0, 67.0, 10000.0, 10500.0, 216.0, 0.40, 21.0, 4.6, 649),
         b("kawasaki_klx230", "Kawasaki", 2020, "KLX230", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.750, 1.895, 1.545, 1.300, 1.130, 1.000), 2.818, 15 to 43, "120/80R18", "80/100R21",
-            1600.0, 8000.0, 18.8, 7500.0, 19.3, 8500.0, 9000.0, 137.0, 0.42, 7.5, 4.0, 233),
+            1600.0, 6000.0, 18.8, 7600.0, 19.3, 8500.0, 9000.0, 134.0, 0.42, 7.5, 3.6, 233,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 67.0, 66.0, 9.4, 1380.0, 885.0, false),
         b("kawasaki_kx450", "Kawasaki", 2024, "KX450", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.800, 2.000, 1.571, 1.333, 1.130), 3.100, 13 to 49, "120/80R19", "90/90R21",
             1800.0, 6500.0, 53.0, 9500.0, 55.0, 11000.0, 11500.0, 111.0, 0.44, 6.3, 4.5, 449),
@@ -630,7 +633,8 @@ object BikePresetCatalog {
             1250.0, 6250.0, 87.0, 7500.0, 90.0, 8500.0, 9000.0, 229.0, 0.45, 15.0, 4.3, 853),
         b("bmw_f900gs", "BMW Motorrad", 2024, "F900GS", EngineFiringConfig.PARALLEL_TWIN_270,
             listOf(2.667, 1.882, 1.529, 1.294, 1.130, 1.000), 2.000, 17 to 44, "150/70R17", "90/90R21",
-            1250.0, 6250.0, 96.0, 7250.0, 90.0, 8500.0, 9000.0, 246.0, 0.45, 23.0, 4.6, 895),
+            1250.0, 6750.0, 93.0, 8500.0, 105.0, 9000.0, 9500.0, 219.0, 0.45, 14.5, 4.4, 895,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 86.0, 77.0, 13.1, 1593.0, 870.0, true),
         b("bmw_r1200gs", "BMW Motorrad", 2014, "R 1200 GS", EngineFiringConfig.BOXER_TWIN,
             listOf(2.438, 1.714, 1.333, 1.111, 0.960, 0.852), 1.824, 17 to 45, "170/60R17", "120/70R19",
             1100.0, 6500.0, 125.0, 7700.0, 125.0, 8000.0, 8500.0, 238.0, 0.47, 20.0, 5.0, 1170),
@@ -645,7 +649,8 @@ object BikePresetCatalog {
             1100.0, 6500.0, 149.0, 7750.0, 145.0, 8500.0, 9000.0, 268.0, 0.47, 30.0, 5.7, 1300),
         b("bmw_r1250rt", "BMW Motorrad", 2019, "R 1250 RT", EngineFiringConfig.BOXER_TWIN,
             listOf(2.438, 1.714, 1.333, 1.111, 0.960, 0.852), 1.824, 17 to 45, "180/55R17", "120/70R17",
-            1100.0, 6250.0, 143.0, 7750.0, 136.0, 7500.0, 8000.0, 279.0, 0.46, 25.0, 5.2, 1254),
+            1100.0, 6250.0, 143.0, 7750.0, 136.0, 9000.0, 9500.0, 279.0, 0.46, 25.0, 5.2, 1254,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.SHAFT, 102.5, 76.0, 12.5, 1485.0, 805.0, true),
         b("bmw_k1600gt", "BMW Motorrad", 2011, "K 1600 GT", EngineFiringConfig.FLAT_SIX,
             listOf(2.286, 1.714, 1.350, 1.111, 0.960, 0.852), 1.600, 18 to 38, "190/55R17", "120/70R17",
             1200.0, 5250.0, 175.0, 7750.0, 165.0, 9000.0, 9500.0, 348.0, 0.51, 27.5, 7.8, 1649),
@@ -846,8 +851,9 @@ object BikePresetCatalog {
             listOf(2.667, 1.895, 1.545, 1.300, 1.130, 0.964), 2.400, 17 to 42, "150/70R17", "110/80R19",
             1300.0, 5000.0, 80.0, 7750.0, 80.0, 8000.0, 8500.0, 229.0, 0.47, 23.0, 4.6, 853),
         b("moto_guzzi_v7_stone", "Moto Guzzi", 2018, "V7 Stone", EngineFiringConfig.V_TWIN_90_75,
-            listOf(2.667, 1.895, 1.545, 1.300, 1.130, 0.964), 2.400, 16 to 40, "150/80R17", "130/90R16",
-            1300.0, 5000.0, 60.0, 7250.0, 52.0, 7000.0, 7500.0, 218.0, 0.42, 21.0, 4.4, 744),
+            listOf(2.667, 1.895, 1.545, 1.300, 1.130, 0.964), 2.400, 16 to 40, "150/80R17", "100/90R18",
+            1300.0, 5000.0, 73.0, 6800.0, 65.0, 7500.0, 8000.0, 218.0, 0.42, 21.0, 4.9, 853,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT, 84.0, 77.0, 10.5, 1450.0, 780.0, false),
         b("moto_guzzi_v9_bobber", "Moto Guzzi", 2016, "V9 Bobber", EngineFiringConfig.V_TWIN_90_75,
             listOf(2.667, 1.895, 1.545, 1.300, 1.130, 0.964), 2.400, 16 to 40, "150/80R16", "130/90R16",
             1300.0, 5000.0, 62.0, 7250.0, 55.0, 7500.0, 8000.0, 198.0, 0.41, 15.0, 4.3, 850),
@@ -855,7 +861,8 @@ object BikePresetCatalog {
         // ========================== MISC (12) ==========================
         b("bmw_r18", "BMW Motorrad", 2020, "R 18", EngineFiringConfig.BOXER_TWIN,
             listOf(2.667, 1.895, 1.545, 1.300, 1.130, 0.964), 1.824, 20 to 46, "180/65B16", "130/90B16",
-            1000.0, 2500.0, 158.0, 5750.0, 91.0, 5000.0, 5500.0, 345.0, 0.55, 16.0, 6.0, 1802),
+            1000.0, 3000.0, 158.0, 4750.0, 91.0, 5750.0, 6000.0, 345.0, 0.55, 16.0, 5.6, 1802,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT, 107.1, 100.0, 9.6, 1731.0, 690.0, true),
         b("honda_cb400_super_four", "Honda", 1999, "CB400 Super Four", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.500, 1.895, 1.571, 1.350, 1.208, 1.043), 1.900, 17 to 41, "130/70R17", "110/70R17",
             1300.0, 9500.0, 39.0, 11500.0, 53.0, 13000.0, 14000.0, 187.0, 0.33, 15.0, 4.5, 399),
@@ -881,35 +888,224 @@ object BikePresetCatalog {
             listOf(2.667, 1.895, 1.545, 1.300, 1.130, 1.000), 2.727, 14 to 42, "140/70R17", "110/70R17",
             1500.0, 7500.0, 22.2, 9000.0, 26.5, 11500.0, 12500.0, 161.0, 0.33, 12.0, 3.3, 249),
         b("suzuki_vstrom_250", "Suzuki", 2017, "V-Strom 250", EngineFiringConfig.PARALLEL_TWIN_180,
-            listOf(2.667, 1.882, 1.529, 1.294, 1.130, 1.000), 2.727, 15 to 43, "130/80R19", "110/80R19",
-            1500.0, 8500.0, 23.4, 10000.0, 24.6, 9500.0, 10000.0, 188.0, 0.41, 17.0, 4.2, 248),
+            listOf(2.667, 1.882, 1.529, 1.294, 1.130, 1.000), 2.727, 15 to 43, "140/70R17", "110/80R17",
+            1500.0, 6500.0, 23.4, 8000.0, 24.6, 9500.0, 10000.0, 188.0, 0.41, 17.3, 3.6, 248),
         b("yamaha_xt500", "Yamaha", 1976, "XT500", EngineFiringConfig.SINGLE_1_CYL,
             listOf(2.667, 1.882, 1.529, 1.294, 1.130), 2.909, 15 to 44, "120/90-18", "80/90R21",
-            1400.0, 5000.0, 35.0, 6500.0, 27.0, 7000.0, 7500.0, 127.0, 0.43, 11.5, 4.8, 499),
+            1400.0, 5000.0, 35.0, 6500.0, 27.0, 7000.0, 7500.0, 139.0, 0.43, 8.8, 4.8, 499,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 87.0, 84.0, 9.0, 1415.0, 865.0, false),
         b("honda_cb750_four", "Honda", 1969, "CB750 Four", EngineFiringConfig.INLINE_FOUR_SCREAMER,
             listOf(2.600, 1.882, 1.529, 1.294, 1.090), 1.900, 19 to 46, "130/90-16", "90/90-19",
-            1100.0, 7000.0, 59.0, 8000.0, 67.0, 8000.0, 9000.0, 256.0, 0.44, 18.0, 10.0, 736),
+            1100.0, 7000.0, 59.0, 8000.0, 67.0, 8500.0, 9000.0, 235.0, 0.44, 18.0, 6.2, 736,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 61.0, 63.0, 9.0, 1455.0, 800.0, false),
         b("kawasaki_zephyr_750", "Kawasaki", 1991, "Zephyr 750", EngineFiringConfig.INLINE_FOUR_SCREAMER,
-            listOf(2.438, 1.714, 1.333, 1.111, 0.960, 0.852), 1.630, 17 to 41, "180/55R17", "120/70R17",
-            1200.0, 9500.0, 66.0, 10000.0, 71.0, 10000.0, 11000.0, 230.0, 0.39, 19.0, 7.2, 738),
+            listOf(2.438, 1.714, 1.333, 1.111, 0.960), 1.630, 17 to 41, "150/70R17", "120/70R17",
+            1200.0, 7500.0, 62.0, 9500.0, 72.0, 10000.0, 11000.0, 224.0, 0.39, 15.0, 5.8, 738,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 66.0, 54.0, 9.5, 1435.0, 780.0, false),
         b("ducati_superleggera_v4", "Ducati", 2020, "Superleggera V4", EngineFiringConfig.V4_90_TWIN_PULSE,
             listOf(2.333, 1.875, 1.556, 1.333, 1.190, 1.091), 1.800, 16 to 41, "200/60R17", "120/70R17",
-            2200.0, 13000.0, 145.0, 15000.0, 221.0, 15700.0, 16200.0, 159.0, 0.27, 16.0, 5.5, 998),
+            2200.0, 11750.0, 119.0, 15250.0, 224.0, 16000.0, 16500.0, 159.0, 0.27, 16.0, 6.5, 998,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 81.0, 48.4, 14.0, 1480.0, 835.0, true),
         b("mv_agusta_f4_750_oro", "MV Agusta", 1999, "F4 750 Oro", EngineFiringConfig.INLINE_FOUR_SCREAMER,
-            listOf(2.438, 1.882, 1.579, 1.350, 1.208, 1.043), 1.700, 17 to 41, "200/55R17", "120/70R17",
-            1300.0, 10000.0, 78.0, 12500.0, 126.0, 12500.0, 13000.0, 174.0, 0.29, 16.5, 6.1, 748),
+            listOf(2.438, 1.882, 1.579, 1.350, 1.208, 1.043), 1.700, 17 to 41, "190/50R17", "120/70R17",
+            1300.0, 10500.0, 75.0, 12500.0, 126.0, 13500.0, 14000.0, 188.0, 0.29, 16.5, 6.1, 749,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 73.8, 43.8, 12.0, 1398.0, 810.0, false),
         b("kawasaki_zx12r", "Kawasaki", 2000, "Ninja ZX-12R", EngineFiringConfig.INLINE_FOUR_SCREAMER,
-            listOf(2.600, 2.000, 1.625, 1.381, 1.211, 1.056), 1.630, 17 to 41, "190/50R17", "120/70R17",
-            1200.0, 7200.0, 137.0, 10500.0, 178.0, 10500.0, 11000.0, 225.0, 0.33, 21.0, 6.0, 1164),
+            listOf(2.600, 2.000, 1.625, 1.381, 1.211, 1.056), 1.630, 17 to 41, "200/50R17", "120/70R17",
+            1200.0, 7500.0, 134.0, 10500.0, 178.0, 11500.0, 12000.0, 247.0, 0.31, 20.0, 6.4, 1199,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 83.0, 55.4, 12.2, 1440.0, 820.0, false),
         b("triumph_trophy_1200", "Triumph", 2002, "Trophy 1200", EngineFiringConfig.INLINE_TRIPLE_120,
-            listOf(2.500, 1.842, 1.500, 1.285, 1.136, 1.043), 1.854, 17 to 43, "180/55R17", "120/70R17",
-            1250.0, 5900.0, 122.0, 9000.0, 134.0, 8500.0, 9000.0, 291.0, 0.46, 25.0, 6.4, 1180),
+            listOf(2.500, 1.842, 1.500, 1.285, 1.136, 1.043), 1.854, 17 to 43, "190/55R17", "120/70R17",
+            1250.0, 6450.0, 120.0, 8900.0, 134.0, 9500.0, 10000.0, 291.0, 0.46, 26.0, 6.0, 1215,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT, 85.0, 71.4, 11.0, 1542.0, 800.0, false),
         b("honda_africa_twin_750", "Honda", 1993, "Africa Twin 750", EngineFiringConfig.V_TWIN_90_75,
-            listOf(2.467, 1.895, 1.545, 1.300, 1.130, 1.000), 2.400, 16 to 45, "150/70R18", "90/90R21",
-            1300.0, 5500.0, 62.0, 6500.0, 55.0, 7000.0, 7500.0, 240.0, 0.48, 23.0, 6.0, 742),
+            listOf(2.467, 1.895, 1.545, 1.300, 1.130), 2.400, 16 to 45, "140/80R17", "90/90R21",
+            1300.0, 6000.0, 62.0, 7500.0, 60.0, 8500.0, 9000.0, 229.0, 0.48, 23.0, 5.8, 742),
         b("suzuki_tl1000r", "Suzuki", 1998, "TL1000R", EngineFiringConfig.V_TWIN_90_75,
             listOf(2.500, 1.895, 1.545, 1.300, 1.130, 1.000), 1.800, 16 to 41, "190/50R17", "120/70R17",
-            1300.0, 6500.0, 123.0, 8500.0, 139.0, 11500.0, 12000.0, 210.0, 0.29, 17.0, 6.1, 996),
+            1300.0, 7500.0, 106.0, 9500.0, 135.0, 11000.0, 11500.0, 210.0, 0.29, 17.0, 6.1, 996),
+
+        // ====================== GLOBAL FLAGSHIPS & 2025/2026 (45) ======================
+        b("honda_gold_wing_tour", "Honda", 2024, "Gold Wing Tour 1800 DCT", EngineFiringConfig.FLAT_SIX,
+            listOf(2.266, 1.667, 1.308, 1.069, 0.903, 0.778, 0.659), 1.795, 19 to 33, "200/55R16", "130/70R18",
+            850.0, 4500.0, 170.0, 5500.0, 126.4, 6000.0, 6500.0, 390.0, 0.56, 21.1, 5.5, 1833,
+            TransmissionType.DCT_DUAL_CLUTCH, FinalDriveType.SHAFT, 73.0, 73.0, 10.5, 1695.0, 745.0, true),
+        b("honda_nx500", "Honda", 2024, "NX500", EngineFiringConfig.PARALLEL_TWIN_180,
+            listOf(3.285, 2.105, 1.600, 1.300, 1.150, 1.043), 2.029, 15 to 41, "160/60R17", "110/80R19",
+            1300.0, 6500.0, 43.0, 8500.0, 47.6, 9000.0, 9500.0, 196.0, 0.40, 17.5, 3.6, 471,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 67.0, 66.8, 10.7, 1445.0, 830.0, true),
+        b("honda_cb1000_hornet_sp", "Honda", 2025, "CB1000 Hornet SP", EngineFiringConfig.INLINE_FOUR_SCREAMER,
+            listOf(2.286, 1.778, 1.500, 1.333, 1.214, 1.137), 1.717, 15 to 45, "180/55R17", "120/70R17",
+            1300.0, 9000.0, 107.0, 11000.0, 157.0, 11750.0, 12250.0, 212.0, 0.34, 17.0, 5.9, 1000,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 76.0, 55.1, 11.7, 1455.0, 809.0, true),
+        b("honda_vfr800f", "Honda", 2016, "VFR800F Interceptor", EngineFiringConfig.V4_90_TWIN_PULSE,
+            listOf(2.846, 2.062, 1.578, 1.291, 1.111, 0.965), 1.934, 16 to 43, "180/55R17", "120/70R17",
+            1250.0, 8500.0, 75.1, 10250.0, 106.0, 11750.0, 12250.0, 242.0, 0.33, 21.5, 5.4, 782,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 72.0, 48.0, 11.8, 1460.0, 809.0, true),
+        b("yamaha_yzf_r9", "Yamaha", 2025, "YZF-R9", EngineFiringConfig.INLINE_TRIPLE_120,
+            listOf(2.666, 2.000, 1.619, 1.380, 1.190, 1.037), 1.681, 16 to 43, "180/55R17", "120/70R17",
+            1300.0, 7000.0, 93.0, 10000.0, 119.0, 10800.0, 11300.0, 195.0, 0.295, 14.0, 5.0, 890,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 78.0, 62.1, 11.5, 1420.0, 830.0, true),
+        b("yamaha_tenere_700_2025", "Yamaha", 2025, "Ténéré 700", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.846, 2.125, 1.632, 1.300, 1.091, 0.964), 1.925, 15 to 46, "150/70R18", "90/90R21",
+            1300.0, 6500.0, 68.0, 9000.0, 73.4, 10000.0, 10500.0, 208.0, 0.44, 16.0, 4.3, 689,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 80.0, 68.6, 11.5, 1595.0, 875.0, true),
+        b("yamaha_vmax_1700", "Yamaha", 2018, "VMAX 1700", EngineFiringConfig.V4_65_RSV4,
+            listOf(2.375, 1.810, 1.400, 1.115, 0.935), 1.509, 18 to 33, "200/50R18", "120/70R18",
+            1100.0, 6500.0, 166.8, 9000.0, 200.0, 9500.0, 10000.0, 310.0, 0.44, 15.0, 7.6, 1679,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT, 90.0, 66.0, 11.3, 1700.0, 775.0, true),
+        b("kawasaki_klr_650", "Kawasaki", 2023, "KLR 650", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.266, 1.444, 1.136, 0.954, 0.791), 2.272, 15 to 43, "130/80R17", "90/90R21",
+            1300.0, 4500.0, 53.0, 6000.0, 40.0, 7500.0, 8000.0, 209.0, 0.46, 23.0, 4.5, 652,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 100.0, 83.0, 9.8, 1540.0, 870.0, false),
+        b("kawasaki_concours_14", "Kawasaki", 2020, "Concours 14 / 1400GTR", EngineFiringConfig.INLINE_FOUR_SCREAMER,
+            listOf(3.333, 2.412, 1.900, 1.619, 1.409, 1.222), 1.556, 21 to 43, "190/50R17", "120/70R17",
+            1100.0, 6200.0, 136.0, 8800.0, 155.0, 10500.0, 11000.0, 313.0, 0.42, 22.0, 5.8, 1352,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT, 84.0, 61.0, 10.7, 1520.0, 815.0, true),
+        b("kawasaki_zx14r", "Kawasaki", 2022, "Ninja ZX-14R", EngineFiringConfig.INLINE_FOUR_SCREAMER,
+            listOf(2.611, 1.947, 1.545, 1.333, 1.154, 1.036), 1.556, 17 to 42, "190/50R17", "120/70R17",
+            1100.0, 7500.0, 158.2, 10000.0, 200.0, 11000.0, 11500.0, 269.0, 0.285, 22.0, 6.2, 1441,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 84.0, 65.0, 12.3, 1480.0, 800.0, true),
+        b("suzuki_gsx_s1000gx", "Suzuki", 2024, "GSX-S1000GX+", EngineFiringConfig.INLINE_FOUR_SCREAMER,
+            listOf(2.562, 2.052, 1.714, 1.500, 1.360, 1.269), 1.553, 17 to 44, "190/50R17", "120/70R17",
+            1200.0, 9250.0, 106.0, 11000.0, 152.0, 11750.0, 12250.0, 232.0, 0.40, 19.0, 6.2, 999,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 73.4, 59.0, 12.2, 1470.0, 845.0, true),
+        b("suzuki_dr_z4s", "Suzuki", 2025, "DR-Z4S", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.416, 1.733, 1.315, 1.090, 0.916), 2.156, 15 to 41, "120/80R18", "80/100R21",
+            1500.0, 6500.0, 37.0, 8000.0, 38.0, 9500.0, 10000.0, 151.0, 0.43, 8.7, 3.4, 398,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 90.0, 62.6, 11.1, 1495.0, 920.0, true),
+        b("suzuki_intruder_m1800r", "Suzuki", 2022, "Intruder M1800R / M109R", EngineFiringConfig.V_TWIN_45_60,
+            listOf(2.266, 1.550, 1.181, 0.960, 0.851), 1.621, 19 to 35, "240/40R18", "130/70R18",
+            1000.0, 3200.0, 160.0, 6200.0, 125.0, 7500.0, 8000.0, 347.0, 0.48, 19.5, 6.1, 1783,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.SHAFT, 112.0, 90.5, 10.5, 1710.0, 705.0, false),
+        b("bmw_k1300r", "BMW Motorrad", 2014, "K 1300 R", EngineFiringConfig.INLINE_FOUR_SCREAMER,
+            listOf(2.280, 1.579, 1.258, 1.033, 0.903, 0.805), 1.556, 20 to 55, "190/55R17", "120/70R17",
+            1150.0, 8250.0, 140.0, 9250.0, 173.0, 11000.0, 11500.0, 243.0, 0.35, 19.0, 5.5, 1293,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.SHAFT, 80.0, 64.3, 13.0, 1585.0, 820.0, false),
+        b("bmw_r12_ninet", "BMW Motorrad", 2024, "R 12 nineT", EngineFiringConfig.BOXER_TWIN,
+            listOf(2.375, 1.696, 1.296, 1.065, 0.905, 0.784), 1.824, 17 to 40, "180/55R17", "120/70R17",
+            1150.0, 6500.0, 115.0, 7000.0, 109.0, 8500.0, 9000.0, 220.0, 0.40, 16.0, 5.1, 1170,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.SHAFT, 101.0, 73.0, 12.0, 1511.0, 795.0, true),
+        b("ducati_panigale_v4_2025", "Ducati", 2025, "Panigale V4 S", EngineFiringConfig.V4_90_TWIN_PULSE,
+            listOf(2.533, 1.941, 1.600, 1.381, 1.238, 1.136), 1.800, 16 to 41, "200/60R17", "120/70R17",
+            1400.0, 11250.0, 120.9, 13500.0, 216.0, 15000.0, 15500.0, 187.0, 0.285, 17.0, 6.5, 1103,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 81.0, 53.5, 14.0, 1485.0, 850.0, true),
+        b("ducati_multistrada_v4_rally", "Ducati", 2024, "Multistrada V4 Rally", EngineFiringConfig.V4_90_TWIN_PULSE,
+            listOf(2.467, 1.875, 1.556, 1.333, 1.190, 1.091), 1.800, 16 to 42, "170/60R17", "120/70R19",
+            1350.0, 8750.0, 121.0, 10750.0, 170.0, 11500.0, 12000.0, 260.0, 0.45, 30.0, 6.6, 1158,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 83.0, 53.5, 14.0, 1572.0, 870.0, true),
+        b("ducati_1098_1198", "Ducati", 2009, "1198 S", EngineFiringConfig.V_TWIN_90_75,
+            listOf(2.467, 1.765, 1.400, 1.182, 1.043, 0.958), 1.840, 15 to 38, "190/55R17", "120/70R17",
+            1300.0, 8000.0, 131.4, 9750.0, 170.0, 10500.0, 11000.0, 193.0, 0.30, 15.5, 6.2, 1198,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 106.0, 67.9, 12.7, 1430.0, 820.0, true),
+        b("ktm_990_duke", "KTM", 2024, "990 Duke", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.615, 1.895, 1.500, 1.250, 1.087, 0.962), 1.925, 16 to 41, "180/55R17", "120/70R17",
+            1400.0, 6750.0, 103.0, 9500.0, 123.0, 10500.0, 11000.0, 190.0, 0.36, 14.8, 4.7, 947,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 92.5, 70.4, 13.5, 1476.0, 825.0, true),
+        b("ktm_1390_super_adv_s_evo", "KTM", 2025, "1390 Super Adventure S Evo", EngineFiringConfig.V_TWIN_90_75,
+            listOf(2.467, 1.813, 1.421, 1.190, 1.043, 0.923), 1.868, 17 to 42, "170/60R17", "120/70R19",
+            1350.0, 8000.0, 145.0, 9500.0, 173.0, 10200.0, 10700.0, 244.0, 0.44, 23.0, 5.7, 1350,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 110.0, 71.0, 13.1, 1558.0, 847.0, true),
+        b("aprilia_rsv_mille_rp", "Aprilia", 2002, "RSV Mille 1000 R", EngineFiringConfig.V_TWIN_45_60,
+            listOf(2.267, 1.632, 1.300, 1.091, 0.960, 0.852), 1.935, 16 to 42, "180/55R17", "120/70R17",
+            1250.0, 7250.0, 101.0, 9500.0, 130.0, 10500.0, 11000.0, 206.0, 0.31, 18.0, 6.2, 998,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 97.0, 67.5, 11.4, 1415.0, 820.0, true),
+        b("moto_guzzi_v100_mandello", "Moto Guzzi", 2023, "V100 Mandello S", EngineFiringConfig.V_TWIN_90_75,
+            listOf(2.538, 1.875, 1.500, 1.261, 1.100, 0.964), 1.880, 17 to 42, "190/55R17", "120/70R17",
+            1300.0, 6750.0, 105.0, 8700.0, 115.0, 9500.0, 10000.0, 233.0, 0.36, 17.0, 4.7, 1042,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.SHAFT, 96.0, 72.0, 12.6, 1475.0, 815.0, true),
+        b("triumph_tiger_sport_660", "Triumph", 2023, "Tiger Sport 660", EngineFiringConfig.INLINE_TRIPLE_120,
+            listOf(2.615, 1.882, 1.529, 1.294, 1.130, 1.000), 1.854, 16 to 51, "180/55R17", "120/70R17",
+            1300.0, 6250.0, 64.0, 10250.0, 81.0, 11250.0, 11750.0, 206.0, 0.39, 17.2, 4.5, 660,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 74.0, 51.1, 11.9, 1418.0, 835.0, true),
+        b("triumph_bobber_1200", "Triumph", 2023, "Bonneville Bobber", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.588, 1.864, 1.440, 1.185, 1.033, 0.906), 1.610, 17 to 37, "150/80R16", "130/90R16",
+            1050.0, 4000.0, 106.0, 6100.0, 78.0, 7000.0, 7500.0, 251.0, 0.43, 12.0, 4.6, 1200,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 97.6, 80.0, 10.0, 1500.0, 690.0, true),
+        b("triumph_speed_twin_1200_rs", "Triumph", 2025, "Speed Twin 1200 RS", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.588, 1.864, 1.440, 1.185, 1.033, 0.906), 1.610, 16 to 42, "160/60R17", "120/70R17",
+            1100.0, 4250.0, 112.0, 7750.0, 105.0, 8250.0, 8750.0, 216.0, 0.39, 14.5, 4.4, 1200,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 97.6, 80.0, 12.1, 1414.0, 810.0, true),
+        b("voge_525dsx", "Voge", 2024, "525DSX", EngineFiringConfig.PARALLEL_TWIN_180,
+            listOf(2.846, 2.000, 1.545, 1.294, 1.130, 1.000), 2.029, 15 to 41, "150/70R17", "110/80R19",
+            1400.0, 7000.0, 44.5, 8500.0, 47.6, 9500.0, 10000.0, 212.0, 0.44, 16.5, 4.1, 494,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 68.0, 68.0, 11.5, 1450.0, 815.0, true),
+        b("voge_rr525", "Voge", 2024, "RR 525", EngineFiringConfig.PARALLEL_TWIN_180,
+            listOf(2.846, 2.000, 1.545, 1.294, 1.130, 1.000), 2.029, 15 to 40, "160/60R17", "120/70R17",
+            1400.0, 7000.0, 50.5, 8500.0, 55.0, 10500.0, 11000.0, 172.0, 0.31, 14.5, 4.2, 494,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 68.0, 68.0, 11.5, 1370.0, 785.0, true),
+        b("voge_300_rally", "Voge", 2023, "300 Rally", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.750, 1.895, 1.545, 1.300, 1.130, 1.000), 2.818, 14 to 48, "120/90R18", "80/100R21",
+            1500.0, 6500.0, 25.0, 9000.0, 28.6, 9500.0, 10000.0, 158.0, 0.44, 11.0, 3.2, 292,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 78.0, 61.2, 11.0, 1430.0, 915.0, false),
+        b("kove_450_rally", "Kove", 2023, "450 Rally", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.583, 1.882, 1.473, 1.227, 1.043, 0.880), 2.750, 13 to 45, "140/80R18", "90/90R21",
+            1600.0, 7000.0, 40.0, 9500.0, 51.0, 10500.0, 11000.0, 155.0, 0.42, 30.0, 4.0, 449,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 94.5, 64.0, 12.0, 1490.0, 960.0, false),
+        b("kove_800x_pro", "Kove", 2024, "800X Pro", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 1.925, 16 to 45, "150/70R18", "90/90R21",
+            1350.0, 7500.0, 80.0, 9000.0, 96.5, 10000.0, 10500.0, 190.0, 0.43, 20.0, 4.8, 799,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 88.0, 65.7, 13.0, 1510.0, 875.0, true),
+        b("gasgas_sm_700", "GasGas", 2023, "SM 700 / ES 700", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.615, 1.895, 1.450, 1.217, 1.043, 0.920), 2.257, 16 to 42, "160/60R17", "120/70R17",
+            1600.0, 6500.0, 73.5, 8000.0, 74.0, 9000.0, 9500.0, 159.0, 0.39, 13.5, 4.2, 693,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 105.0, 80.0, 12.7, 1476.0, 898.0, true),
+        b("beta_rr_300_racing", "Beta", 2024, "RR 300 Racing 2T", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.533, 1.882, 1.473, 1.227, 1.043, 0.909), 2.750, 14 to 49, "140/80R18", "90/90R21",
+            1600.0, 7500.0, 41.0, 9000.0, 50.0, 10500.0, 11000.0, 110.0, 0.45, 9.5, 4.9, 293,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 72.0, 72.0, 12.6, 1482.0, 940.0, false),
+        b("sherco_300_sef", "Sherco", 2024, "300 SEF Factory", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.600, 1.933, 1.529, 1.263, 1.047, 0.900), 2.840, 14 to 48, "140/80R18", "90/90R21",
+            1750.0, 8500.0, 32.0, 11500.0, 44.0, 12500.0, 13000.0, 112.0, 0.45, 9.7, 4.5, 304,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 84.0, 54.8, 12.5, 1480.0, 950.0, false),
+        b("fantic_caballero_500", "Fantic", 2023, "Caballero Scrambler 500", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.667, 1.882, 1.450, 1.217, 1.043, 0.920), 2.500, 14 to 44, "140/80R17", "110/80R19",
+            1500.0, 6000.0, 43.0, 7500.0, 40.0, 8500.0, 9000.0, 165.0, 0.42, 12.0, 4.2, 449,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 94.5, 64.0, 11.5, 1425.0, 820.0, false),
+        b("bimota_tesi_h2", "Bimota", 2022, "Tesi H2", EngineFiringConfig.INLINE_FOUR_SCREAMER,
+            listOf(3.188, 2.526, 2.045, 1.727, 1.524, 1.348), 1.551, 18 to 44, "200/55R17", "120/70R17",
+            1200.0, 11000.0, 141.0, 11500.0, 231.0, 13500.0, 14000.0, 214.0, 0.285, 17.0, 6.8, 998,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 76.0, 55.0, 8.5, 1445.0, 840.0, true),
+        b("norton_v4sv", "Norton", 2023, "V4SV", EngineFiringConfig.V4_65_RSV4,
+            listOf(2.533, 1.941, 1.600, 1.381, 1.238, 1.136), 1.750, 16 to 42, "200/55R17", "120/70R17",
+            1350.0, 9000.0, 125.0, 12500.0, 185.0, 13500.0, 14000.0, 193.0, 0.29, 15.0, 6.3, 1200,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 82.0, 56.8, 13.6, 1434.0, 830.0, true),
+        b("cfmoto_450mt", "CFMoto", 2024, "450MT", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.750, 1.938, 1.545, 1.304, 1.136, 1.036), 2.150, 14 to 47, "140/70R18", "90/90R21",
+            1400.0, 6250.0, 44.0, 8500.0, 44.0, 9500.0, 10000.0, 195.0, 0.44, 17.5, 4.1, 449,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 72.0, 55.2, 11.5, 1505.0, 820.0, true),
+        b("cfmoto_800mt_explore", "CFMoto", 2024, "800MT Explore", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 1.925, 16 to 42, "150/70R17", "110/80R19",
+            1350.0, 7500.0, 77.0, 9000.0, 95.0, 9800.0, 10300.0, 231.0, 0.44, 19.0, 4.9, 799,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 88.0, 65.7, 12.7, 1531.0, 825.0, true),
+        b("cfmoto_675nk", "CFMoto", 2025, "675NK", EngineFiringConfig.INLINE_TRIPLE_120,
+            listOf(2.667, 1.947, 1.545, 1.304, 1.136, 1.036), 1.880, 15 to 43, "180/55R17", "120/70R17",
+            1350.0, 8250.0, 70.0, 11000.0, 95.0, 12000.0, 12500.0, 189.0, 0.34, 15.0, 4.8, 675,
+            TransmissionType.QUICKSHIFTER_BIDIRECTIONAL, FinalDriveType.CHAIN, 72.0, 55.2, 11.5, 1400.0, 810.0, true),
+        b("hero_mavrick_440", "Hero", 2024, "Mavrick 440", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.750, 1.895, 1.450, 1.217, 1.043, 0.920), 2.400, 15 to 39, "150/60R17", "110/70R17",
+            1350.0, 4000.0, 36.0, 6000.0, 27.0, 6800.0, 7300.0, 191.0, 0.40, 13.5, 3.6, 440,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 79.6, 88.4, 9.65, 1388.0, 803.0, true),
+        b("hero_karizma_xmr_210", "Hero", 2024, "Karizma XMR 210", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.750, 1.882, 1.450, 1.185, 1.000, 0.880), 2.818, 14 to 42, "140/70R17", "100/80R17",
+            1550.0, 7250.0, 20.4, 9250.0, 25.5, 10000.0, 10500.0, 163.5, 0.32, 11.0, 3.1, 210,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 73.0, 50.0, 12.0, 1351.0, 810.0, true),
+        b("royal_enfield_guerrilla_450", "Royal Enfield", 2024, "Guerrilla 450", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.750, 1.938, 1.545, 1.304, 1.136, 1.036), 2.000, 15 to 45, "160/60R17", "120/70R17",
+            1400.0, 5500.0, 40.0, 8000.0, 40.0, 8500.0, 9000.0, 184.0, 0.38, 11.0, 3.5, 452,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 84.0, 81.5, 11.5, 1440.0, 780.0, true),
+        b("royal_enfield_shotgun_650", "Royal Enfield", 2024, "Shotgun 650", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 2.000, 15 to 38, "150/70R17", "100/90R18",
+            1200.0, 5650.0, 52.3, 7250.0, 47.0, 7700.0, 8200.0, 240.0, 0.43, 13.8, 4.4, 648,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 78.0, 67.8, 9.5, 1465.0, 795.0, true),
+        b("jawa_42_bobber", "Jawa", 2023, "42 Bobber", EngineFiringConfig.SINGLE_1_CYL,
+            listOf(2.750, 1.895, 1.545, 1.300, 1.130, 0.964), 2.500, 15 to 41, "140/70R17", "100/90R18",
+            1400.0, 5500.0, 32.7, 7250.0, 29.9, 8000.0, 8500.0, 185.0, 0.42, 12.5, 3.4, 334,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 81.0, 65.0, 11.0, 1485.0, 740.0, true),
+        b("brixton_cromwell_1200", "Brixton", 2023, "Cromwell 1200", EngineFiringConfig.PARALLEL_TWIN_270,
+            listOf(2.615, 1.895, 1.545, 1.300, 1.130, 0.964), 1.800, 16 to 38, "150/70R17", "100/90R18",
+            1150.0, 3100.0, 108.0, 6550.0, 83.0, 7500.0, 8000.0, 235.0, 0.43, 16.0, 4.6, 1222,
+            TransmissionType.MANUAL_SEQUENTIAL, FinalDriveType.CHAIN, 98.6, 80.0, 10.0, 1450.0, 800.0, false),
     )
 
     val byId: Map<String, BikeMechanicalProfile> = all.associateBy { it.profileId }
@@ -960,11 +1156,81 @@ object BikePresetCatalog {
         fuelTankL: Double = 16.0,
         consumptionLPer100: Double = 4.8,
         displacementCc: Int = 0,
-        transmissionType: TransmissionType = TransmissionType.MANUAL_SEQUENTIAL,
-        finalDriveType: FinalDriveType = FinalDriveType.CHAIN
+        transmissionType: TransmissionType = if (redline >= 12000.0 || (year >= 2021 && powerHp >= 85.0)) TransmissionType.QUICKSHIFTER_BIDIRECTIONAL else TransmissionType.MANUAL_SEQUENTIAL,
+        finalDriveType: FinalDriveType = when {
+            id.contains("r1300") || id.contains("r1250") || id.contains("r1200") ||
+                id.contains("k1600") || id.contains("r_ninet") || id.contains("r18") ||
+                id.contains("moto_guzzi") || id.contains("fjr1300") -> FinalDriveType.SHAFT
+            brand.contains("Harley", ignoreCase = true) && !id.contains("pan_america") -> FinalDriveType.BELT
+            brand.contains("Indian", ignoreCase = true) && !id.contains("ftr") -> FinalDriveType.BELT
+            id.contains("bolt_rspec") -> FinalDriveType.BELT
+            else -> FinalDriveType.CHAIN
+        },
+        boreMm: Double = 0.0,
+        strokeMm: Double = 0.0,
+        compressionRatio: Double = 0.0,
+        wheelbaseMm: Double = 0.0,
+        seatHeightMm: Double = 0.0,
+        hasSlipperClutch: Boolean? = null
     ): BikeMechanicalProfile {
         val rear = TireSpecification.parse(rearTire)
         val front = TireSpecification.parse(frontTire)
+        val effectiveCc = if (displacementCc > 0) displacementCc else (torqueNm * 9.6).toInt().coerceIn(50, 2500)
+        val cyl = engine.cylinderCount.coerceAtLeast(1)
+        val dispPerCyl = effectiveCc.toDouble() / cyl
+        val resolvedStroke = if (strokeMm > 0.0) {
+            strokeMm
+        } else {
+            val targetPistonSpeed = when {
+                redline >= 14000.0 -> 21.8
+                redline >= 11500.0 -> 20.0
+                engine == EngineFiringConfig.BOXER_TWIN -> 18.2
+                cyl == 1 -> 17.5
+                else -> 16.8
+            }
+            ((targetPistonSpeed * 60.0 / (2.0 * max(4000.0, redline))) * 1000.0)
+                .coerceIn(36.0, 96.0)
+                .let { (it * 10.0).roundToInt() / 10.0 }
+        }
+        val resolvedBore = if (boreMm > 0.0) {
+            boreMm
+        } else {
+            sqrt((4000.0 * dispPerCyl) / (PI * resolvedStroke))
+                .coerceIn(42.0, 118.0)
+                .let { (it * 10.0).roundToInt() / 10.0 }
+        }
+        val resolvedComp = if (compressionRatio > 0.0) {
+            compressionRatio
+        } else {
+            when {
+                redline >= 13500.0 -> 13.2
+                redline >= 10500.0 -> 12.1
+                year >= 2016 -> 11.2
+                else -> 9.6
+            }
+        }
+        val resolvedWheelbase = if (wheelbaseMm > 0.0) {
+            wheelbaseMm
+        } else {
+            when {
+                finalDriveType == FinalDriveType.BELT -> 1580.0
+                front.rimDiameterInch >= 21.0 -> 1515.0
+                effectiveCc <= 350 -> 1365.0
+                else -> 1425.0
+            }
+        }
+        val resolvedSeat = if (seatHeightMm > 0.0) {
+            seatHeightMm
+        } else {
+            when {
+                finalDriveType == FinalDriveType.BELT -> 710.0
+                front.rimDiameterInch >= 21.0 -> 865.0
+                effectiveCc <= 350 -> 795.0
+                else -> 820.0
+            }
+        }
+        val resolvedSlipper = hasSlipperClutch ?: (year >= 2015 && (powerHp >= 45.0 || effectiveCc >= 300))
+
         return BikeMechanicalProfile(
             profileId = id,
             brand = brand,
@@ -990,9 +1256,15 @@ object BikePresetCatalog {
             transmissionGearCount = gears.size,
             transmissionType = transmissionType,
             finalDriveType = finalDriveType,
-            displacementCc = if (displacementCc > 0) displacementCc else (torqueNm * 9.6).toInt().coerceIn(50, 2500),
+            displacementCc = effectiveCc,
+            boreMm = resolvedBore,
+            strokeMm = resolvedStroke,
+            compressionRatio = resolvedComp,
+            wheelbaseMm = resolvedWheelbase,
+            seatHeightMm = resolvedSeat,
             fuelTankCapacityLiters = fuelTankL,
             avgFuelConsumptionLPer100Km = consumptionLPer100,
+            hasSlipperClutch = resolvedSlipper,
             dragCoefficientAreaCdA = cda,
             torqueCurve = generatedCurve(idle, torqueRpm, torqueNm, powerRpm, powerHp, redline, limiter)
         )

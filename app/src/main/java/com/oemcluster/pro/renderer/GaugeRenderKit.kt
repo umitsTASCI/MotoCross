@@ -43,7 +43,7 @@ internal fun hexColor(value: Long): Color = Color(value)
 /**
  * skinId'ten türetilen deterministik değişken seçici.
  * Her model, modelNumber % 2/3 ile aynı 2-3 yerleşime düşmek yerine
- * kendi kimliğine göre farklı bir alt düzen alır — 270 kadran birbirinden
+ * kendi kimliğine göre farklı bir alt düzen alır — 307 kadran birbirinden
  * yapısal olarak ayrışır.
  */
 internal fun skinVariant(skinId: String, mod: Int): Int {
@@ -689,7 +689,7 @@ internal fun DrawScope.drawSpeed(
     align: Paint.Align = Paint.Align.CENTER
 ) {
     // OEM kuralı: birim, rakamların sağında ve taban çizgisinde durur.
-    // (Altına ortalanmış "km/h" amatör görünür; tüm 270 kadranda bu düzeltildi.)
+    // (Altına ortalanmış "km/h" amatör görünür; tüm OEM kadranlarda bu düzeltildi.)
     val text = value.toString()
     val unitSize = size * 0.20f
     val numberWidth = gTextWidth(text, size, family, true, -0.02f)
@@ -1193,9 +1193,9 @@ internal fun DrawScope.drawStatusRail(
     // 3. Hararet bloğu
     drawDivider(ctx.w * 0.328f)
     val tempX = ctx.w * 0.345f
-    drawTempIcon(tempX, top + railH * 0.36f, iconR * 0.92f, if (t.coolantTempCelsius > 270.0) RL_RED else p.fg.copy(alpha = 0.65f))
+    drawTempIcon(tempX, top + railH * 0.36f, iconR * 0.92f, if (t.coolantTempCelsius > 108.0) RL_RED else p.fg.copy(alpha = 0.65f))
     val tempRatio = ((t.coolantTempCelsius - 40.0) / 80.0).toFloat().coerceIn(0f, 1f)
-    drawLinearBar(tempX + iconR * 1.7f, top + railH * 0.28f, barW, barH, tempRatio, if (t.coolantTempCelsius > 270) RL_RED else p.fg, p.track, 0.82f, RL_RED, barH * 0.45f)
+    drawLinearBar(tempX + iconR * 1.7f, top + railH * 0.28f, barW, barH, tempRatio, if (t.coolantTempCelsius > 108.0) RL_RED else p.fg, p.track, 0.82f, RL_RED, barH * 0.45f)
     gText("TEMP ${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", tempX + iconR * 1.7f, yBot, small, p.muted, Paint.Align.LEFT, family, true)
 
     // 4. GNSS Uydu bloğu
@@ -1478,7 +1478,7 @@ internal fun DrawScope.drawTemperatureAndFuel(
     drawLinearBar(x, y, width, h, t.fuelLevelRatio, p.accent, p.track, 0.9f, RL_RED, h * 0.5f)
     gText("E", x - ctx.u * 1.2f, y + h * 0.9f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
     gText("F", x + width + ctx.u * 0.5f, y + h * 0.9f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
-    drawLinearBar(x, y + gap, width, h, ((t.coolantTempCelsius - 40) / 80).toFloat().coerceIn(0f, 1f), if (t.coolantTempCelsius > 270) RL_RED else p.fg, p.track, 0.85f, RL_RED, h * 0.5f)
+    drawLinearBar(x, y + gap, width, h, ((t.coolantTempCelsius - 40) / 80).toFloat().coerceIn(0f, 1f), if (t.coolantTempCelsius > 108.0) RL_RED else p.fg, p.track, 0.85f, RL_RED, h * 0.5f)
     gText("C", x - ctx.u * 1.2f, y + gap + h * 0.9f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
     gText("H", x + width + ctx.u * 0.5f, y + gap + h * 0.9f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
     if (!compact) {

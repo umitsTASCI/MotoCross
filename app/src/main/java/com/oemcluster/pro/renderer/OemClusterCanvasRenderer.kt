@@ -25,14 +25,14 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * MotoCross — 270 OEM gösterge panelinin tek giriş noktası.
+ * MotoCross — 307 OEM gösterge panelinin tek giriş noktası.
  *
  * Tasarım kuralları:
  *  - Tüm ölçüler min(w,h)/100 normalize birimine bağlıdır; hiçbir sabit piksel yoktur.
  *  - Hız/vites/deVir bloğu ortak bir katman değildir; her geometri ailesi kendi
  *    kompozisyonu içinde bu değerleri farklı yerde ve farklı tipografiyle çizer.
  *  - Her model, paleti + geometrisi + varyantı + shift-LED deseni + marka imzası
- *    ile diğer 104 modelden ayrışır.
+ *    ile diğer OEM modellerden ayrışır.
  */
 @Composable
 fun OemClusterCanvasRenderer(

@@ -221,7 +221,7 @@ private fun DrawScope.drawFuelIcon(cx: Float, cy: Float, r: Float, color: Color)
 }
 
 /* =====================================================================================
- *  8) DUAL CLASSIC ANALOG — R nineT, Bonneville, Thruxton, GT 650, Forza, TMAX
+ *  8) DUAL CLASSIC ANALOG — R nineT, Bonneville, Thruxton, Continental GT 650, W800
  * ===================================================================================== */
 internal fun DrawScope.drawDualClassicAnalog(ctx: GaugeContext) {
     val p = ctx.palette

@@ -16,8 +16,9 @@ gen/
 out/
 release/
 
-# Gradle files
+# Gradle / Kotlin files
 .gradle/
+.kotlin/
 build/
 app/build/
 

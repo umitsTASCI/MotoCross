@@ -17,7 +17,7 @@ import kotlinx.serialization.json.Json
  * Gösterge hangi OEM skin olursa olsun hız, vites, RPM ve shift-light değerleri
  * bu profilden hesaplanır.
  *
- * 270 fabrika profili [BikePresetCatalog] içinde tanımlıdır. Kullanıcı
+ * 307+ fabrika profili [BikePresetCatalog] içinde tanımlıdır. Kullanıcı
  * düzenlemeleri ve kendi eklediği motorlar SharedPreferences'ta kalıcıdır.
  */
 object BikeDatabaseRepository {

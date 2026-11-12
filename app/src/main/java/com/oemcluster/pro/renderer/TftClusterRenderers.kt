@@ -681,11 +681,14 @@ private fun DrawScope.drawCompactEvo(ctx: GaugeContext) {
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.20f)
 
     val rangeText = "${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}"
-    gText("RANGE $rangeText   •   ${ctx.subMode.uppercase()}", ctx.w * 0.5f, ctx.h * 0.735f,
-        ctx.u * 1.8f, p.accent, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.08f)
+    gText("RANGE $rangeText   •   ${ctx.subMode.uppercase()}", ctx.w * 0.5f, ctx.h * 0.725f,
+        ctx.u * 1.75f, p.accent, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.08f)
     gText("FUEL ${(t.fuelLevelRatio * 100).roundToInt()}%   •   ${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}",
-        ctx.w * 0.5f, ctx.h * 0.775f, ctx.u * 1.6f, p.muted,
+        ctx.w * 0.5f, ctx.h * 0.765f, ctx.u * 1.55f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true)
+    gText("ODO ${ctx.formatOdometer()}  •  TRIP ${ctx.formatTrip()}  •  SEANS ${ctx.formatSession()}",
+        ctx.w * 0.5f, ctx.h * 0.810f, ctx.u * 1.48f, p.fg.copy(alpha = 0.88f),
+        Paint.Align.CENTER, ctx.type.digits, true)
 }
 
 private fun shiftBarColor(ctx: GaugeContext, idleColor: Color = ctx.palette.accent): Color {
@@ -860,13 +863,13 @@ private fun DrawScope.drawPincerBar(
 }
 
 /* =====================================================================================
- * 10) F1 DIGITAL ARC BAR — Duke Gen1, 690 SMC, R3 Gen2, GSX-R L7, S2000, MT-09/07 LCD
+ * 10) F1 DIGITAL ARC BAR — Duke Gen1, 690 SMC, R3 Gen2, GSX-R L7, MT-09/07 LCD
  * ===================================================================================== */
 internal fun DrawScope.drawF1DigitalArc(ctx: GaugeContext) {
     val p = ctx.palette
     val t = ctx.telemetry
     val railH = ctx.h * 0.072f
-    val straight = ctx.spec.skinId.contains("s2000_ap1") || ctx.spec.skinId.contains("gsxr1000r_l7")
+    val straight = ctx.spec.skinId.contains("gsxr1000r_l7") || ctx.spec.skinId.contains("katana")
     drawShiftLeds(ctx.spec, t, p, ctx.w * 0.5f, ctx.u * 4.0f, ctx.w * 0.24f, ctx.u)
 
     // Segment ark / düz bar
@@ -1064,18 +1067,16 @@ internal fun DrawScope.drawRallyTower(ctx: GaugeContext) {
 }
 
 /* =====================================================================================
- * 12) PANORAMIC SPLIT TFT — R1300GS, Multistrada V4, Tiger 1200, CFMoto 800NK, PCX
+ * 12) PANORAMIC SPLIT TFT — R1300GS, Multistrada V4, Tiger 1200, CFMoto 800NK, Tourer
  * ===================================================================================== */
 internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
     val p = ctx.palette
     val t = ctx.telemetry
     val railH = ctx.h * 0.072f
-    val scooter = ctx.spec.skinId.contains("pcx") || ctx.spec.skinId.contains("vespa") ||
-        ctx.spec.skinId.contains("xadv") || ctx.spec.skinId.contains("c400") ||
-        ctx.spec.skinId.contains("forza") || ctx.spec.skinId.contains("tmax")
     val adventure = ctx.spec.skinId.contains("r1300gs") || ctx.spec.skinId.contains("multistrada") ||
         ctx.spec.skinId.contains("tiger") || ctx.spec.skinId.contains("africa") ||
-        ctx.spec.skinId.contains("norden") || ctx.spec.skinId.contains("800nk")
+        ctx.spec.skinId.contains("norden") || ctx.spec.skinId.contains("800nk") ||
+        ctx.spec.skinId.contains("transalp") || ctx.spec.skinId.contains("vstrom")
 
     drawShiftLeds(ctx.spec, t, p, ctx.w * 0.5f, ctx.u * 4.0f, ctx.w * 0.24f, ctx.u)
 
@@ -1083,7 +1084,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
         // Üst durum şeridi
         drawRect(p.fg.copy(alpha = 0.04f), Offset(0f, ctx.h * 0.095f), Size(ctx.w, ctx.h * 0.055f))
         gText("MODE  ${ctx.subMode.uppercase()}", ctx.w * 0.035f, ctx.h * 0.132f, ctx.u * 1.75f, p.accent, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.10f)
-        gText(if (adventure) "OFF-ROAD READY" else if (scooter) "URBAN ECO" else "TOURING", ctx.w * 0.50f, ctx.h * 0.132f, ctx.u * 1.6f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.14f)
+        gText(if (adventure) "OFF-ROAD READY" else "TOURING", ctx.w * 0.50f, ctx.h * 0.132f, ctx.u * 1.6f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.14f)
         gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}   ${(t.fuelLevelRatio * 100).roundToInt()}%   ${t.gpsSatelliteCount} SAT", ctx.w * 0.965f, ctx.h * 0.132f, ctx.u * 1.55f, p.fg, Paint.Align.RIGHT, ctx.type.label, true)
 
         val top = ctx.h * 0.19f
@@ -1095,7 +1096,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
 
         // Sol kart: harita / yol bilgisayarı
         drawPanel(ctx.w * 0.025f, top, leftW, panelH, p)
-        gText(if (adventure) "NAVIGATION" else if (scooter) "ECONOMY" else "TRIP", ctx.w * 0.045f, top + ctx.u * 4.0f, ctx.u * 1.6f, p.muted, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.14f)
+        gText(if (adventure) "NAVIGATION" else "TRIP", ctx.w * 0.045f, top + ctx.u * 4.0f, ctx.u * 1.6f, p.muted, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.14f)
         // minik harita ızgarası
         val mapTop = top + ctx.u * 6.0f
         val mapH = panelH * 0.44f
@@ -1111,7 +1112,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
         }
         drawPath(route, p.accent, style = Stroke(width = ctx.u * 0.9f, cap = StrokeCap.Round))
         drawCircle(p.accent, ctx.u * 1.0f, Offset(ctx.w * 0.235f, mapTop + mapH * 0.10f))
-        gText("${if (adventure) "TET SECTOR 4" else if (scooter) formatFuelConsumption(4.1, ctx.fuelUnitCode) else "ALPS ROUTE"}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 3.0f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
+        gText(if (adventure) "TET SECTOR 4" else "ALPS ROUTE", ctx.w * 0.045f, mapTop + mapH + ctx.u * 3.0f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
         gText("ODO  ${ctx.formatOdometer()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 6.0f, ctx.u * 1.85f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
         gText("TRIP A  ${ctx.formatTrip()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 8.8f, ctx.u * 1.65f, p.accent, Paint.Align.LEFT, ctx.type.label, true)
         gText("SEANS  ${ctx.formatSession()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 11.4f, ctx.u * 1.50f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
