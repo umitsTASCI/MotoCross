@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">MotoCross</string>
+    <string name="app_developer" translatable="false">USTlabs</string>
+    <string name="app_description" translatable="false">MotoCross — 270 OEM motosiklet göstergesi, sanal ECU ve 400 Hz sensör füzyonu. USTlabs tarafından geliştirildi.</string>
 </resources>
-

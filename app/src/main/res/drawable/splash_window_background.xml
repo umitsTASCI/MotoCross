@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soğuk açılış penceresi: siyah zemin + ortada USTlabs amblemi. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/motocross_black" />
+    <item
+        android:width="168dp"
+        android:height="168dp"
+        android:gravity="center"
+        android:drawable="@drawable/ic_splash_ustlabs" />
+</layer-list>

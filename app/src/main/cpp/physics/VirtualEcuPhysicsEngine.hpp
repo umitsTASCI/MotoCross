@@ -10,7 +10,10 @@ struct NativeBikeMechanicalConfig {
     int frontSprocketTeeth{15};           // Z_front
     int rearSprocketTeeth{45};            // Z_rear
     double primaryReductionRatio{2.667};  // i_primary
-    std::array<double, 6> gearRatios{2.667, 1.857, 1.421, 1.143, 0.956, 0.840}; // i_gear[1..6]
+    int gearCount{6};                     // Etkin vites sayısı (1..8)
+    int transmissionTypeCode{0};          // 0:Manual, 1:Quickshifter, 2:DCT, 3:CVT
+    double drivetrainEfficiency{0.93};    // Zincir:0.93, Kayış:0.90, Şaft:0.86
+    std::array<double, 8> gearRatios{2.667, 1.857, 1.421, 1.143, 0.956, 0.840, 0.780, 0.730}; // i_gear[1..8]
 
     // Arka Lastik Parametreleri (Bölüm 3.1)
     double rearTireWidthMm{150.0};        // W_mm
@@ -34,16 +37,16 @@ struct NativeBikeMechanicalConfig {
     std::array<double, 16> torqueRpmPoints{};
     std::array<double, 16> torqueNmPoints{};
 
-    // Her vites (1..6) için önceden veya dinamik hesaplanan RPM_opt[n]
-    std::array<double, 6> optimalShiftRpmPerGear{9800.0, 9900.0, 10000.0, 10000.0, 10000.0, 10000.0};
+    // Her vites (1..8) için önceden veya dinamik hesaplanan RPM_opt[n]
+    std::array<double, 8> optimalShiftRpmPerGear{9800.0, 9900.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 10000.0};
 };
 
 struct VirtualEcuTelemetryOutput {
     double effectiveTireRadiusMm{306.9};
     double slipRatioLambda{0.0};
-    std::array<double, 6> kinematicRpmPerGear{};
+    std::array<double, 8> kinematicRpmPerGear{};
 
-    int currentGear{0};          // 0 = Neutral (N), 1..6 = Vites
+    int currentGear{0};          // 0 = Neutral (N), 1..gearCount = Vites
     bool isNeutral{true};
     bool isClutchPulled{false};
     int transmissionStateCode{0}; // 0:Neutral, 1:Engaged, 2:Upshift, 3:Downshift, 4:ClutchIn
@@ -67,6 +70,7 @@ struct VirtualEcuTelemetryOutput {
     double estimatedWheelHp{0.0};
     double estimatedWheelTorqueNm{0.0};
     bool tractionControlActive{false};
+    double gearConfidence{0.65};   // 0..1: vites tahmininin güvenilirliği
 
     // Teker Derece Ölçer & Teker Metre (Wheelie Analyzer & Timer/Meter)
     bool isWheelieActive{false};
@@ -157,6 +161,11 @@ private:
     double shiftStateHoldSec_{0.0}; // UPSHIFT/DOWNSHIFT durum kodunun renderer'a görünür kalma süresi
     double prevAccelMs2_{0.0};
     float gearShiftAnimProgress_{1.0f};
+    double gearConfidence_{0.65};
+    double lastSpeedMs_{0.0};
+    double cruiseTimerSec_{0.0};
+    double shiftConfirmSec_{0.0};
+    int pendingGear_{0};
 
     // Peak-Hold Tepe Devir İzi (Bölüm 4.6 - 1.8 saniye asılı kalır)
     double peakHoldRpm_{1450.0};

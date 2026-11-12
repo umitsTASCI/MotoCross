@@ -80,7 +80,7 @@ enum class WheelieGaugeDisplayMode {
 /**
  * Bölüm 7.1: Tek Yönlü Veri Akışı (Strict Unidirectional Data Flow) Çıktısı:
  * Sensors (GNSS + 400Hz IMU + Mic) -> Physics & Virtual ECU Engine (User's Active Bike Profile)
- * -> UnifiedTelemetryState -> Active Dashboard Renderer (Any of the 105 OEM Skins).
+ * -> UnifiedTelemetryState -> Active Dashboard Renderer (Any of the 270 OEM Skins).
  */
 @Serializable
 data class UnifiedTelemetryState(
@@ -149,7 +149,16 @@ data class UnifiedTelemetryState(
     val currentWheelieDistanceMeters: Double = 0.0,    // Anlık/Son teker mesafesi (m)
     val maxWheelieAngleDeg: Double = 0.0,              // Sürüş rekoru: Maksimum teker açısı (°)
     val longestWheelieDurationSec: Double = 0.0,       // Sürüş rekoru: En uzun teker süresi (sn)
-    val longestWheelieDistanceMeters: Double = 0.0     // Sürüş rekoru: En uzun teker mesafesi (m)
+    val longestWheelieDistanceMeters: Double = 0.0,    // Sürüş rekoru: En uzun teker mesafesi (m)
+
+    // GNSS hız kalitesi ve vites tahmini güveni (yeni nesil füzyon çıktıları)
+    val gearConfidence: Double = 0.65,                  // 0..1 vites tahmini güvenilirliği
+    val gpsSpeedAgeSec: Double = 1.0e9,                 // Son Doppler fix'inin yaşı
+    val gpsSpeedAccuracyMs: Double = 0.0,               // Son fix'in hız doğruluğu [m/s]
+    val isStationary: Boolean = true,                   // GPS + ZUPT duruş tespiti
+    val gpsSpeedSourceBlend: Double = 0.0,               // 0 = IMU, 1 = taze GNSS Doppler
+    val gpsSatelliteCount: Int = 0,                      // Görünür/çözülen uydu sayısı
+    val gpsHorizontalAccuracyM: Double = 99.0            // Yatay konum doğruluğu [m]
 ) {
     /**
      * Bölüm 4.2: Seçilen göstergenin kadran üst sınırına (gaugeRedlineRpm ve gaugeMaxRpm) göre

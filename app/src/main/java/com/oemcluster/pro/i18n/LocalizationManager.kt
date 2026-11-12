@@ -72,7 +72,7 @@ enum class StringKey {
     PARAM_REV_LIMITER_RPM,
     PARAM_TOTAL_MASS_KG,
 
-    // Gösterge Galerisi (105 OEM Skins)
+    // Gösterge Galerisi (270 OEM Skins)
     GALLERY_ALL_BRANDS,
     GALLERY_FILTER_TFT,
     GALLERY_FILTER_ANALOG_HYBRID,
@@ -193,10 +193,10 @@ object LocalizationManager {
         // 1. TÜRKÇE (TR - VARSAYILAN TAM DESTEK)
         // =====================================================================
         AppLanguage.TR to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Gösterge & Sanal ECU",
+            StringKey.APP_TITLE to "MotoCross — 270 Gösterge & Sanal ECU",
             StringKey.CONTROL_CENTER_TITLE to "ANA KONTROL MERKEZİ",
             StringKey.MENU_MY_GARAGE to "Garajım (Motor Profili)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Gösterge Galerisi (105 Model)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Gösterge Galerisi (270 Model)",
             StringKey.MENU_SETTINGS to "Gelişmiş Ayarlar",
             StringKey.MENU_TRIP_TELEMETRY to "Yol Bilgisayarı & Drag Box",
             StringKey.ACTION_SAVE to "Kaydet",
@@ -207,7 +207,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Aktif Motor Olarak Seç",
             StringKey.ACTION_FAVORITE to "Favorilere Ekle",
             StringKey.ACTION_FAVORITES_ONLY to "Sadece Favori Göstergeler",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "105 model içinde ara (Örn: S1000RR, 390 Duke, R1, Hayabusa)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "270 model içinde ara (Örn: S1000RR, 390 Duke, R1, Hayabusa)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "AKTİF MEKANİK MOTOR PROFİLİ (TEK GERÇEK VERİ KAYNAĞI)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Hız, Vites, Gerçek RPM ve Shift-Light noktaları tamamen bu mekanik profilden hesaplanır.",
@@ -236,7 +236,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Kesici Devri (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Motosiklet + Sürücü Toplam Ağırlığı (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Tüm Markalar (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Tüm Markalar (270)",
             StringKey.GALLERY_FILTER_TFT to "Modern TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analog Yarış & Hibrit",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Negatif / Pozitif LCD",
@@ -337,10 +337,10 @@ object LocalizationManager {
         // 2. ENGLISH (EN)
         // =====================================================================
         AppLanguage.EN to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Gauges & Virtual ECU",
+            StringKey.APP_TITLE to "MotoCross — 270 Gauges & Virtual ECU",
             StringKey.CONTROL_CENTER_TITLE to "MASTER CONTROL CENTER",
             StringKey.MENU_MY_GARAGE to "My Garage (Bike Profile)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Dashboard Gallery (105 Models)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Dashboard Gallery (270 Models)",
             StringKey.MENU_SETTINGS to "Advanced Settings",
             StringKey.MENU_TRIP_TELEMETRY to "Trip Computer & Drag Box",
             StringKey.ACTION_SAVE to "Save",
@@ -351,7 +351,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Set as Active Bike",
             StringKey.ACTION_FAVORITE to "Add to Favorites",
             StringKey.ACTION_FAVORITES_ONLY to "Favorite Gauges Only",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Search 105 models (e.g., S1000RR, 390 Duke, R1, Hayabusa)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Search 270 models (e.g., S1000RR, 390 Duke, R1, Hayabusa)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "ACTIVE MECHANICAL BIKE PROFILE (SINGLE SOURCE OF TRUTH)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Speed, Gear, True RPM, and Shift-Light thresholds are computed strictly from this mechanical profile.",
@@ -380,7 +380,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Rev Limiter Cut RPM",
             StringKey.PARAM_TOTAL_MASS_KG to "Total Bike + Rider Mass (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "All Brands (105)",
+            StringKey.GALLERY_ALL_BRANDS to "All Brands (270)",
             StringKey.GALLERY_FILTER_TFT to "Modern TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analog Racing & Hybrid",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Negative / Positive LCD",
@@ -481,10 +481,10 @@ object LocalizationManager {
         // 3. DEUTSCH (DE)
         // =====================================================================
         AppLanguage.DE to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Cockpits & Virtuelles Steuergerät",
+            StringKey.APP_TITLE to "MotoCross — 270 Cockpits & Virtuelles Steuergerät",
             StringKey.CONTROL_CENTER_TITLE to "HAUPTSTEUERZENTRALE",
             StringKey.MENU_MY_GARAGE to "Meine Garage (Motorradprofil)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Cockpit-Galerie (105 Modelle)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Cockpit-Galerie (270 Modelle)",
             StringKey.MENU_SETTINGS to "Erweiterte Einstellungen",
             StringKey.MENU_TRIP_TELEMETRY to "Bordcomputer & Drag-Box",
             StringKey.ACTION_SAVE to "Speichern",
@@ -495,7 +495,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Als aktives Motorrad wählen",
             StringKey.ACTION_FAVORITE to "Favorit",
             StringKey.ACTION_FAVORITES_ONLY to "Nur Favoriten-Cockpits",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "105 Modelle durchsuchen (z.B. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "270 Modelle durchsuchen (z.B. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "AKTIVES MECHANISCHES MOTORRADPROFIL (SINGLE SOURCE OF TRUTH)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Geschwindigkeit, Gang, echte Drehzahl und Schaltblitz werden exakt aus diesem Profil berechnet.",
@@ -524,7 +524,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Drehzahlbegrenzer (U/min)",
             StringKey.PARAM_TOTAL_MASS_KG to "Gesamtmasse Motorrad + Fahrer (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Alle Marken (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Alle Marken (270)",
             StringKey.GALLERY_FILTER_TFT to "Modernes TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analog Rennsport & Hybrid",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Negativ / Positiv LCD",
@@ -625,10 +625,10 @@ object LocalizationManager {
         // 4. ITALIANO (IT)
         // =====================================================================
         AppLanguage.IT to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Cruscotti & ECU Virtuale",
+            StringKey.APP_TITLE to "MotoCross — 270 Cruscotti & ECU Virtuale",
             StringKey.CONTROL_CENTER_TITLE to "CENTRO DI CONTROLLO",
             StringKey.MENU_MY_GARAGE to "Il Mio Garage (Profilo Moto)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galleria Cruscotti (105 Modelli)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galleria Cruscotti (270 Modelli)",
             StringKey.MENU_SETTINGS to "Impostazioni Avanzate",
             StringKey.MENU_TRIP_TELEMETRY to "Computer di Bordo & Drag Box",
             StringKey.ACTION_SAVE to "Salva",
@@ -639,7 +639,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Imposta come Moto Attiva",
             StringKey.ACTION_FAVORITE to "Preferito",
             StringKey.ACTION_FAVORITES_ONLY to "Solo Cruscotti Preferiti",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Cerca tra 105 modelli (es. Panigale V4, RSV4, 390 Duke)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Cerca tra 270 modelli (es. Panigale V4, RSV4, 390 Duke)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PROFILO MECCANICO ATTIVO (UNICA FONTE DI VERITÀ)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Velocità, Marcia, Giri Reali e Shift-Light sono calcolati rigorosamente da questo profilo meccanico.",
@@ -668,7 +668,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Limitatore di Giri (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Massa Totale Moto + Pilota (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Tutti i Marchi (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Tutti i Marchi (270)",
             StringKey.GALLERY_FILTER_TFT to "TFT Moderni",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analogici Racing & Ibridi",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Negativi / Positivi",
@@ -769,10 +769,10 @@ object LocalizationManager {
         // 5. ESPAÑOL (ES)
         // =====================================================================
         AppLanguage.ES to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Cuadros & ECU Virtual",
+            StringKey.APP_TITLE to "MotoCross — 270 Cuadros & ECU Virtual",
             StringKey.CONTROL_CENTER_TITLE to "CENTRO DE CONTROL PRINCIPAL",
             StringKey.MENU_MY_GARAGE to "Mi Garaje (Perfil Mecánico)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galería de Cuadros (105 Modelos)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galería de Cuadros (270 Modelos)",
             StringKey.MENU_SETTINGS to "Ajustes Avanzados",
             StringKey.MENU_TRIP_TELEMETRY to "Ordenador de Viaje & Drag Box",
             StringKey.ACTION_SAVE to "Guardar",
@@ -783,7 +783,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Seleccionar como Moto Activa",
             StringKey.ACTION_FAVORITE to "Favorito",
             StringKey.ACTION_FAVORITES_ONLY to "Solo Cuadros Favoritos",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Buscar entre 105 modelos (ej. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Buscar entre 270 modelos (ej. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PERFIL MECÁNICO ACTIVO (ÚNICA FUENTE DE VERDAD)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Velocidad, Marcha, RPM Reales y Shift-Light se calculan estrictamente desde este perfil.",
@@ -812,7 +812,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Corte de Encendido (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Masa Total Moto + Piloto (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Todas las Marcas (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Todas las Marcas (270)",
             StringKey.GALLERY_FILTER_TFT to "TFT Modernos",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analógicos Racing e Híbridos",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Negativo / Positivo",
@@ -913,10 +913,10 @@ object LocalizationManager {
         // 6. FRANÇAIS (FR)
         // =====================================================================
         AppLanguage.FR to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Compteurs & ECU Virtuel",
+            StringKey.APP_TITLE to "MotoCross — 270 Compteurs & ECU Virtuel",
             StringKey.CONTROL_CENTER_TITLE to "CENTRE DE CONTRÔLE",
             StringKey.MENU_MY_GARAGE to "Mon Garage (Profil Moto)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galerie de Compteurs (105 Modèles)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galerie de Compteurs (270 Modèles)",
             StringKey.MENU_SETTINGS to "Paramètres Avancés",
             StringKey.MENU_TRIP_TELEMETRY to "Ordinateur de Bord & Drag Box",
             StringKey.ACTION_SAVE to "Enregistrer",
@@ -927,7 +927,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Définir comme Moto Active",
             StringKey.ACTION_FAVORITE to "Favori",
             StringKey.ACTION_FAVORITES_ONLY to "Compteurs Favoris Uniquement",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Rechercher parmi 105 modèles (ex. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Rechercher parmi 270 modèles (ex. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PROFIL MÉCANIQUE ACTIF (SOURCE UNIQUE DE VÉRITÉ)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "La vitesse, le rapport engagé, le régime réel et le Shift-Light sont calculés à partir de ce profil.",
@@ -956,7 +956,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Rupteur (Rev Limiter tr/min)",
             StringKey.PARAM_TOTAL_MASS_KG to "Masse Totale Moto + Pilote (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Toutes les Marques (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Toutes les Marques (270)",
             StringKey.GALLERY_FILTER_TFT to "TFT Modernes",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analogiques Racing & Hybrides",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Négatif / Positif",
@@ -1057,10 +1057,10 @@ object LocalizationManager {
         // 7. 日本語 (JA)
         // =====================================================================
         AppLanguage.JA to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105車種メーター & 仮想ECU",
+            StringKey.APP_TITLE to "MotoCross — 270車種メーター & 仮想ECU",
             StringKey.CONTROL_CENTER_TITLE to "マスターコントロールセンター",
             StringKey.MENU_MY_GARAGE to "マイガレージ（車両機械プロフィール）",
-            StringKey.MENU_DASHBOARD_GALLERY to "メーターギャラリー（全105モデル）",
+            StringKey.MENU_DASHBOARD_GALLERY to "メーターギャラリー（全270モデル）",
             StringKey.MENU_SETTINGS to "詳細設定",
             StringKey.MENU_TRIP_TELEMETRY to "トリップ・ドラッグ計測・テレメトリー",
             StringKey.ACTION_SAVE to "保存",
@@ -1071,7 +1071,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "現在の車両として選択",
             StringKey.ACTION_FAVORITE to "お気に入り登録",
             StringKey.ACTION_FAVORITES_ONLY to "お気に入りメーターのみ表示",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "105モデルから検索 (例: R1, S1000RR, 390 Duke, 隼)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "270モデルから検索 (例: R1, S1000RR, 390 Duke, 隼)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "現在の車両機械データ（唯一の演算基準データ）",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "速度・ギア段数・実回転数・シフトライトは全てこの車両の機械諸元から算出されます。",
@@ -1100,7 +1100,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "レブリミッター作動回転数 (rpm)",
             StringKey.PARAM_TOTAL_MASS_KG to "車体＋ライダー総重量 (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "全メーカー (105)",
+            StringKey.GALLERY_ALL_BRANDS to "全メーカー (270)",
             StringKey.GALLERY_FILTER_TFT to "最新フルカラーTFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "アナログ＆ハイブリッド",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "反転/通常デジタルLCD",
@@ -1201,10 +1201,10 @@ object LocalizationManager {
         // 8. PORTUGUÊS (PT)
         // =====================================================================
         AppLanguage.PT to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Painéis & ECU Virtual",
+            StringKey.APP_TITLE to "MotoCross — 270 Painéis & ECU Virtual",
             StringKey.CONTROL_CENTER_TITLE to "CENTRAL DE CONTROLO",
             StringKey.MENU_MY_GARAGE to "Minha Garagem (Perfil da Moto)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galeria de Painéis (105 Modelos)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galeria de Painéis (270 Modelos)",
             StringKey.MENU_SETTINGS to "Definições Avançadas",
             StringKey.MENU_TRIP_TELEMETRY to "Computador de Bordo & Drag Box",
             StringKey.ACTION_SAVE to "Guardar",
@@ -1215,7 +1215,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Definir como Moto Ativa",
             StringKey.ACTION_FAVORITE to "Favorito",
             StringKey.ACTION_FAVORITES_ONLY to "Apenas Painéis Favoritos",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Pesquisar nos 105 modelos (ex: S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Pesquisar nos 270 modelos (ex: S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PERFIL MECÂNICO ATIVO (ÚNICA FONTE DE VERDADE)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Velocidade, Mudança, RPM Real e Shift-Light são calculados estritamente a partir deste perfil.",
@@ -1244,7 +1244,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Corte de Ignição (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Massa Total Moto + Condutor (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Todas as Marcas (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Todas as Marcas (270)",
             StringKey.GALLERY_FILTER_TFT to "TFT Modernos",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analógicos Racing & Híbridos",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Negativo / Positivo",
@@ -1345,10 +1345,10 @@ object LocalizationManager {
         // 9. РУССКИЙ (RU)
         // =====================================================================
         AppLanguage.RU to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 105 Приборных Панелей и Виртуальный ЭБУ",
+            StringKey.APP_TITLE to "MotoCross — 270 Приборных Панелей и Виртуальный ЭБУ",
             StringKey.CONTROL_CENTER_TITLE to "ЦЕНТР УПРАВЛЕНИЯ",
             StringKey.MENU_MY_GARAGE to "Мой Гараж (Профиль Мотоцикла)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Галерея Приборок (105 Моделей)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Галерея Приборок (270 Моделей)",
             StringKey.MENU_SETTINGS to "Расширенные Настройки",
             StringKey.MENU_TRIP_TELEMETRY to "Бортовой Компьютер и Drag Box",
             StringKey.ACTION_SAVE to "Сохранить",
@@ -1359,7 +1359,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Сделать Активным Мотоциклом",
             StringKey.ACTION_FAVORITE to "В Избранное",
             StringKey.ACTION_FAVORITES_ONLY to "Только Избранные Панели",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Поиск среди 105 моделей (напр. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Поиск среди 270 моделей (напр. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "АКТИВНЫЙ МЕХАНИЧЕСКИЙ ПРОФИЛЬ (ЕДИНЫЙ ИСТОЧНИК ДАННЫХ)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Скорость, передача, реальные обороты и Shift-Light рассчитываются строго по этому профилю.",
@@ -1388,7 +1388,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Отсечка (Rev Limiter об/мин)",
             StringKey.PARAM_TOTAL_MASS_KG to "Общая Масса Мотоцикл + Пилот (кг)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Все Марки (105)",
+            StringKey.GALLERY_ALL_BRANDS to "Все Марки (270)",
             StringKey.GALLERY_FILTER_TFT to "Современные TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Аналоговые Спорт и Гибрид",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Инверсные / Обычные LCD",

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  USTlabs atom amblemi: üç eliptik yörünge, turuncu çekirdek ve cyan elektronlar.
+  Native splash (Android 12+) ve soğuk açılış penceresi arka planında kullanılır.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Dış halka -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F4F7FB"
+        android:strokeWidth="1.3"
+        android:strokeAlpha="0.12"
+        android:pathData="M54,8 A46,46 0 1,1 53.99,8 Z" />
+
+    <!-- Yörünge 0° -->
+    <group
+        android:rotation="0"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#F4F7FB"
+            android:strokeWidth="2"
+            android:strokeAlpha="0.68"
+            android:pathData="M14,54 A40,15 0 1,0 94,54 A40,15 0 1,0 14,54 Z" />
+        <path
+            android:fillColor="#00E5FF"
+            android:pathData="M82,43.3 m-2.8,0 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0" />
+    </group>
+
+    <!-- Yörünge 60° -->
+    <group
+        android:rotation="60"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#F4F7FB"
+            android:strokeWidth="2"
+            android:strokeAlpha="0.68"
+            android:pathData="M14,54 A40,15 0 1,0 94,54 A40,15 0 1,0 14,54 Z" />
+        <path
+            android:fillColor="#00E5FF"
+            android:pathData="M26,64.7 m-2.8,0 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0" />
+    </group>
+
+    <!-- Yörünge 120° -->
+    <group
+        android:rotation="120"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#F4F7FB"
+            android:strokeWidth="2"
+            android:strokeAlpha="0.68"
+            android:pathData="M14,54 A40,15 0 1,0 94,54 A40,15 0 1,0 14,54 Z" />
+        <path
+            android:fillColor="#00E5FF"
+            android:pathData="M62,39.3 m-2.8,0 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0" />
+    </group>
+
+    <!-- Çekirdek parıltısı -->
+    <path
+        android:fillColor="#FF6A00"
+        android:fillAlpha="0.22"
+        android:pathData="M54,54 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0" />
+    <!-- Çekirdek -->
+    <path
+        android:fillColor="#FF6A00"
+        android:pathData="M54,54 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <!-- Nükleus parlaması -->
+    <path
+        android:fillColor="#F4F7FB"
+        android:pathData="M54,54 m-2.4,0 a2.4,2.4 0 1,0 4.8,0 a2.4,2.4 0 1,0 -4.8,0" />
+</vector>

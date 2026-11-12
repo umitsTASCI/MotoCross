@@ -3,14 +3,15 @@
 <img src="docs/motocross-banner.svg" alt="MotoCross — OEM-Cluster Pro Banner" width="100%" />
 
 # 🏍️ MotoCross (`OEM-Cluster Pro`)
-### 100% Authentic Motorcycle Instrument Cluster Simulator (105 Models), 400 Hz C++20 NDK Sensor Fusion, Virtual ECU Telemetry Engine & Wheelie Analyzer
+### 100% Authentic Motorcycle Instrument Cluster Simulator (270 Models), 400 Hz C++20 NDK Sensor Fusion, Virtual ECU Telemetry Engine & Wheelie Analyzer
 
 [![Android APK Build](https://img.shields.io/github/actions/workflow/status/umitsTASCI/MotoCross/android-apk.yml?branch=main&style=for-the-badge&logo=android&label=APK%20BUILD&color=00E676)](https://github.com/umitsTASCI/MotoCross/actions)
 [![Download Latest APK](https://img.shields.io/github/v/release/umitsTASCI/MotoCross?style=for-the-badge&logo=github&label=DOWNLOAD%20APK&color=FF6600)](https://github.com/umitsTASCI/MotoCross/releases/latest)
 [![Platform](https://img.shields.io/badge/ANDROID-8.0%20--%2015%2B%20(API%2026--36)-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#)
 [![Engine](https://img.shields.io/badge/NDK%20CORE-C%2B%2B20%20%E2%80%A2%20400%20Hz%20EKF-00E5FF?style=for-the-badge&logo=cplusplus&logoColor=white)](#)
 [![Render](https://img.shields.io/badge/RENDER-120%20FPS%20CANVAS-FFD600?style=for-the-badge)](#)
-[![Models](https://img.shields.io/badge/OEM%20CLUSTERS-105%20MODELS%20%E2%80%A2%2012%20BRANDS-FF1744?style=for-the-badge)](#)
+[![Models](https://img.shields.io/badge/OEM%20CLUSTERS-270%20MODELS%20%E2%80%A2%2012%20BRANDS-FF1744?style=for-the-badge)](#)
+[![Developer](https://img.shields.io/badge/DEVELOPER-USTLABS-FF6A00?style=for-the-badge)](#)
 
 </div>
 
@@ -18,12 +19,12 @@
 
 ## 🎯 Vision & Core Engineering Philosophy
 
-**MotoCross (`OEM-Cluster Pro`)** is **not** a basic windshield HUD projection app. It is a pixel-perfect **Real Motorcycle Instrument Cluster & Virtual ECU Telemetry Engine** that transforms any handlebar-mounted Android smartphone or tablet into the factory original instrument cluster of **105 iconic motorcycle models** (*OEM TFT displays, Negative Black LCDs, Positive Transflective LCDs, and Analog-Digital Hybrid Tachometers*), powered by a **400 Hz C++20 NDK Strapdown Inertial Navigation Engine** and **48 kHz Acoustic DSP**.
+**MotoCross (`OEM-Cluster Pro`)** is **not** a basic windshield HUD projection app. It is a pixel-perfect **Real Motorcycle Instrument Cluster & Virtual ECU Telemetry Engine** that transforms any handlebar-mounted Android smartphone or tablet into the factory original instrument cluster of **270 iconic motorcycle models** (*OEM TFT displays, Negative Black LCDs, Positive Transflective LCDs, and Analog-Digital Hybrid Tachometers*), powered by a **400 Hz C++20 NDK Strapdown Inertial Navigation Engine** and **48 kHz Acoustic DSP**.
 
 > [!IMPORTANT]
 > ### 🏆 THE GOLDEN RULE: Strict Separation of Mechanical Bike Profile vs. Visual Gauge Skin
 > 1. **My Garage (`BikeMechanicalProfile`) = Single Source of Truth:** The motorcycle mechanical specifications configured in **My Garage** (*front/rear sprockets, 1st–6th gear ratios, primary reduction, tire dimensions, idle RPM, redline/rev-limiter RPM, and torque/power curves*) serve as the sole physical source of truth.
-> 2. **105 Instrument Clusters = Pure Visual UI Skins (`DeclarativeGaugeSpec`):** Any dashboard selected from the **105-model catalog** (*e.g., BMW S1000RR, Yamaha YZF-R1, KTM 390 Duke, Ducati Panigale V4, Suzuki Hayabusa*) functions strictly as a high-precision visual UI skin.
+> 2. **270 Instrument Clusters = Pure Visual UI Skins (`DeclarativeGaugeSpec`):** Any dashboard selected from the **270-model catalog** (*e.g., BMW S1000RR, Yamaha YZF-R1, KTM 390 Duke, Ducati Panigale V4, Suzuki Hayabusa*) functions strictly as a high-precision visual UI skin.
 > 3. **Real-World Scenario:** If you configure your own motorcycle as a **KTM 390 Duke** (or Yamaha MT-07, Honda CBR250R) in *My Garage* and select the **BMW S1000RR** or **Yamaha YZF-R6** instrument cluster on screen, the S1000RR dashboard displays **your motorcycle's true speed, true gear, and true RPM**, and triggers the S1000RR Shift-Light flasher at **your motorcycle's optimal shift RPM**!
 
 ---
@@ -95,7 +96,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ### 🏍️ Method 4: Handlebar Mounting & First-Ride Calibration
 
 1. **Select Your Bike Profile (`My Garage`):** Open the top quick-control drawer, tap **`CONTROL CENTER → My Garage`**, and select your motorcycle model (*or enter custom sprocket teeth, gear ratios, tire size, and redline RPM*).
-2. **Choose Any of the 105 Clusters:** Open the **`105 Gauges`** tab to filter by brand/model, or **swipe left/right** directly on the dashboard screen to switch clusters at 120 FPS.
+2. **Choose Any of the 270 Clusters:** Open the **`270 Gauges`** tab to filter by brand/model, or **swipe left/right** directly on the dashboard screen to switch clusters at 120 FPS.
 3. **Zero-Lean & 3D Handlebar Mount Calibration:** Mount your phone securely on the handlebar, hold the motorcycle upright on level ground, and tap **`Zero Lean (0°)`** in the top bar. On your first forward acceleration, the **PCA (Principal Component Analysis)** engine automatically aligns your phone's arbitrary mount angle with the motorcycle's chassis axes.
 
 ---
@@ -120,7 +121,7 @@ flowchart LR
 
     subgraph UI["3. 120 FPS Jetpack Compose & Canvas"]
         STATE["UnifiedTelemetryState\n(39-Double Zero-GC JNI Buffer)"]
-        SKINS["105 OEM Cluster Skins\n(12 Brands • 12 Geometry Families)"]
+        SKINS["270 OEM Cluster Skins\n(25+ Brands • 12 Geometry Families)"]
     end
 
     IMU --> CAL --> EKF
@@ -134,6 +135,10 @@ flowchart LR
 ---
 
 ## 🔥 Core Engineering Highlights
+
+### 0. USTlabs Signature Boot Sequence (`3.5 s Cinematic Cold Start`)
+
+Every cold start is signed by **USTlabs**. The native splash (Android 12+ `windowSplashScreenAnimatedIcon`) hands over to a Compose launch sequence: the USTlabs emblem draws itself inside the 270° OEM tachometer ring, the system-check bus ticks through *15-State EKF → Virtual ECU → OEM Skin Library*, and the needle performs a full welcome sweep (**0 → 299 km/h → 0**, **0 → 14 000 RPM → 0**) before the live cluster fades in. The sequence is skippable with a tap and can be toggled or replayed from **Settings → USTlabs / App**.
 
 ### 1. Zero-Latency Velocity, True Lean Angle & 15-State EKF (`400 Hz C++20 NDK`)
 * **Automatic 3D Handlebar Mount Alignment (`MountCalibrator`):** Aligns arbitrary phone mounting angles $(X_p, Y_p, Z_p)$ to the motorcycle chassis frame $(X_b \text{ [Forward]}, Y_b \text{ [Left]}, Z_b \text{ [Up]})$ using static gravity normalization for $\mathbf{Z}_b$ and **Principal Component Analysis (PCA)** on initial forward acceleration vectors for $\mathbf{X}_b$.
@@ -155,7 +160,7 @@ flowchart LR
   * **Layer 2 (400 Hz Longitudinal Jerk):** Detects 40–350 ms torque interruption valleys ($\Delta a_x < -1.8\text{ m/s}^2$) during upshifts and engine-braking spikes during downshifts.
   * **Layer 3 (Torque-Curve Feasibility):** Validates candidate gears against the active bike profile's aerodynamic drag and wheel torque curve.
 
-### 4. All 7 Authentic Physical Gauge Reactions Across 105 Clusters
+### 4. All 7 Authentic Physical Gauge Reactions Across 270 Clusters
 1. **Ignition Boot & Needle Sweep:** Brand-authentic splash logos (*"READY TO RACE"*, *"M-Power"*, *"R-Spirit"*), full warning lamp self-check, and 0 → Redline → Idle sweep (`888` / `299` speed test).
 2. **2nd-Order Spring-Damper Needle Physics:** Sub-stepped semi-implicit Euler solver ($\omega_n = 28\text{ rad/s}$ for stepper-motor analog needles; $\omega_n = 350\text{ rad/s}$ for crisp TFT bar graphs).
 3. **Upshift RPM Drop & 1.8s Peak-Hold Trail:** Instant physical RPM drop matching the next gear ratio $G_{i+1}/G_i$, leaving a 1.8-second trailing peak marker.
@@ -166,22 +171,36 @@ flowchart LR
 
 ---
 
-## 🏍️ Complete Catalog of 105 Motorcycle Instrument Clusters (12 Brands)
+## 🏍️ Complete Catalog of 270 Motorcycle Instrument Clusters (23 Brands)
 
-| # | Brand Group | Count | Included Models & Cluster Architectures |
-| :--- | :--- | :---: | :--- |
-| **1** | **KTM** | **10 Models** | `125 Duke`, `200 Duke`, `250 Duke (LCD & TFT)`, `390 Duke (2013 LCD, 2017–2023 TFT, 2024 Gen-3)`, `790 Duke`, `890 Duke R`, `1290/1390 Super Duke R EVO`, `RC 390` |
-| **2** | **Yamaha** | **12 Models** | `MT-07 (Negative LCD & 5" TFT)`, `MT-09 SP`, `MT-10 SP`, `YZF-R1 / R1M (Track Mode)`, `YZF-R6 (16.5k Analog + LCD)`, `YZF-R7`, `YZF-R3`, `YZF-R25`, `XSR900`, `Ténéré 700 (Rally Tower)`, `TMAX 560` |
-| **3** | **Honda** | **12 Models** | `CBR1000RR-R Fireblade SP`, `CBR600RR`, `CBR650R / CB650R`, `CBR500R`, `CBR250R (Blue/Amber Hybrid)`, `CBR250RR (MC51)`, `CB1000R Black Edition`, `CRF1100L Africa Twin`, `NC750X`, `MSX125 Grom`, `Forza 750` |
-| **4** | **Kawasaki** | **10 Models** | `Ninja ZX-10R / ZX-10RR`, `Ninja H2 / H2R (Supercharger Boost)`, `Ninja ZX-6R (636)`, `Ninja ZX-4RR (16,000 RPM)`, `Ninja 650`, `Ninja 400`, `Z900`, `Z1000 (Sugomi LED)`, `Z650`, `Versys 1000 SE` |
-| **5** | **BMW Motorrad** | **10 Models** | `S1000RR (6.5" M-Sport Pure Ride)`, `M1000RR (M-Competition)`, `S1000R`, `S1000XR`, `R1250GS / R1300GS Connectivity`, `F900R / F900XR`, `G310R / G310GS`, `R nineT (Dual Analog Cups)` |
-| **6** | **Ducati** | **10 Models** | `Panigale V4 / V4S / V4R (Track Evo)`, `Panigale V2`, `Streetfighter V4 S`, `Monster 937`, `Monster 821 / 1200`, `Hypermotard 950 SP`, `Multistrada V4 S`, `Diavel V4`, `Scrambler 800`, `Supersport 950 S` |
-| **7** | **Suzuki** | **9 Models** | `Hayabusa Gen-3 (Symmetrical 4-Analog + TFT)`, `GSX-R1000R (Negative LCD)`, `GSX-R750 / 600 (K8/L1 Analog + Gear)`, `GSX-8S / GSX-8R`, `GSX-S1000`, `SV650`, `V-Strom 1050DE / 800DE`, `DR-Z400SM` |
-| **8** | **Aprilia** | **7 Models** | `RSV4 Factory 1100`, `Tuono V4 Factory`, `RS 660`, `Tuono 660`, `RS 457`, `Tuareg 660`, `Dorsoduro 900` |
-| **9** | **Triumph** | **7 Models** | `Street Triple 765 RS`, `Speed Triple 1200 RS`, `Daytona 675R`, `Trident 660`, `Tiger 900 / 1200 Rally Pro`, `Bonneville T120`, `Rocket 3 R` |
-| **10** | **MV Agusta & Husqvarna** | **6 Models** | `MV Agusta F3 800 RR`, `Brutale 1000 RR`, `Superveloce 800`, `Husqvarna Svartpilen / Vitpilen 401`, `Norden 901`, `701 Supermoto` |
-| **11** | **CFMoto, Benelli & Royal Enfield** | **6 Models** | `CFMoto 450SR / 450NK (Curved 5" TFT)`, `800NK`, `Benelli TNT 600i`, `TRK 502X / 702X`, `Royal Enfield Interceptor 650`, `Himalayan 450 (Tripper Dash)` |
-| **12** | **Harley-Davidson, Indian & Vespa** | **6 Models** | `Harley Sportster S`, `Pan America 1250`, `Iron 883`, `Indian FTR 1200 R Carbon`, `Vespa GTS 300 SuperTech`, `Piaggio Beverly 400` |
+| Brand | Models | Highlights |
+| :--- | :---: | :--- |
+| **Yamaha** | 32 | `YZF-R1`, `R1M`, `R6`, `R7`, `R15 v4`, `MT-03` … `MT-10 SP`, `XSR900`, `Ténéré 700 Extreme`, `Tracer 9 GT`, `YZ450F` |
+| **Honda** | 31 | `CBR1000RR-R Fireblade SP`, `CBR600RR`, `Africa Twin 1100`, `NC750X (DCT)`, `Rebel 500`, `CB350`, `CRF450R` |
+| **Kawasaki** | 27 | `Ninja ZX-10R / ZX-10RR`, `ZX-6R 636`, `ZX-4RR`, `Ninja H2`, `Z900RS`, `Vulcan S`, `Eliminator`, `Versys 650` |
+| **KTM** | 20 | `390 Duke Gen2/Gen3`, `790/890/1290/1390 Duke`, `RC 125/200/390`, `EXC 450`, `390 Adventure`, `1190 Adventure` |
+| **Ducati** | 20 | `Panigale V4 / V2 / 899`, `Streetfighter V2/V4S`, `Monster 696/821/937/1200`, `Scrambler 1100`, `DesertX`, `Superleggera V4` |
+| **BMW Motorrad** | 19 | `S1000RR / M1000RR (K46/K67)`, `M 1000 XR`, `F900GS`, `R 1300 GS Adventure`, `K 1600 GT`, `R 18` |
+| **Suzuki** | 18 | `Hayabusa Gen-1/2/3`, `GSX-R1000R`, `GSX-8S/8R`, `SV650`, `V-Strom 650/800DE`, `DR-Z400S`, `TL1000R` |
+| **Triumph** | 14 | `Street Triple 765 RS`, `Speed Triple 1200`, `Trident 660`, `Rocket 3 R`, `Tiger 850 Sport`, `Speed 400`, `Scrambler 400X` |
+| **Bajaj** | 10 | `Pulsar NS160/NS200/RS200`, `NS400 Z`, `N250`, `Dominar 400`, `Avenger Street 220` |
+| **Aprilia** | 9 | `RSV4 Factory`, `RS 660`, `Tuono 660`, `RS 457`, `Dorsoduro 900/1200`, `Tuareg 660` |
+| **Husqvarna** | 8 | `Svartpilen / Vitpilen 401`, `Vitpilen 801`, `Norden 901`, `701 Enduro / Supermoto`, `FE 450`, `FC 450` |
+| **Royal Enfield** | 8 | `Himalayan 450`, `Meteor 350`, `Hunter 350`, `Classic 350`, `Bullet 350`, `Super Meteor 650`, `Scram 411` |
+| **Harley-Davidson** | 8 | `Sportster S`, `Street Glide`, `Road Glide`, `CVO Street Glide`, `Pan America 1250`, `Softail Street Bob`, `Fat Boy` |
+| **Benelli** | 7 | `TRK 502`, `Leoncino 500 / 125`, `752S`, `502C`, `Imperiale 400` |
+| **TVS** | 7 | `Apache RTR 160 4V / 180 / 200 4V`, `RR310`, `RTR 310`, `Ronin 225`, `Raider 125` |
+| **MV Agusta** | 6 | `Brutale 800/1000 RR`, `F3 800`, `Rush 1000`, `F4 750 Oro`, `F4 RR` |
+| **Indian Motorcycle** | 6 | `FTR 1200 / FTR 1200 S`, `Scout 1200`, `Scout Bobber`, `Challenger 1800`, `Pursuit 1800` |
+| **CFMoto** | 5 | `450SR / 450SS / 450NK`, `675SR-R`, `800NK`, `250SR` |
+| **Hero** | 4 | `Xtreme 160R 4V`, `Xtreme 200S`, `Xpulse 200 4V / 210` |
+| **QJMotor** | 4 | `SRK 125 / 250 / 400 / 800` |
+| **Zontes** | 3 | `ZT125X5`, `310R`, `703F` |
+| **Moto Guzzi** | 3 | `V85 TT`, `V7 Stone`, `V9 Bobber` |
+| **Vespa** | 1 | `GTS 300 SuperTech` |
+| | **270** | Scooter hariç — dünya geneli motosiklet kadranları |
+
+Every dashboard above ships with its real circuit-grade mechanical preset (gearbox, ratios, sprockets, tires, torque curve) in the built-in **Garage database**; your own motorcycle is always the single source of truth for speed, gear, RPM and shift-light triggers.
 
 ---
 
@@ -205,12 +224,13 @@ MotoCross/
 │       │   └── jni/TelemetryJniBridge.cpp        # Lock-Free 39-Double Zero-Allocation JNI Bridge
 │       ├── java/com/oemcluster/pro/
 │       │   ├── MainActivity.kt                   # 120 FPS Main Host, Live Simulator & 4-Tab Control Center
-│       │   ├── catalog/OemGaugeCatalog105.kt     # Declarative catalog of 105 OEM clusters across 12 brands
+│       │   ├── catalog/OemGaugeCatalog.kt         # Declarative catalog of 270 OEM clusters across 25+ brands
 │       │   ├── data/BikeDatabaseRepository.kt    # Factory motorcycle mechanical presets & custom tuning store
 │       │   ├── domain/BikeMechanicalProfile.kt   # Sprockets, transmission, toroidal tire & torque curve model
 │       │   ├── domain/UnifiedTelemetryState.kt   # Unidirectional telemetry packet (Speed, RPM, Gear, Lean, Wheelie)
 │       │   ├── i18n/LocalizationManager.kt       # Instant 9-language runtime localization
 │       │   ├── renderer/OemClusterCanvasRenderer.kt # 120 FPS Custom Canvas renderer & Wheelie Pod
+│       │   ├── ui/LaunchSequence.kt              # USTlabs signature 3.5 s cold-start boot animation
 │       │   └── sensors/                          # 400 Hz IMU, GNSS Doppler, Lux & 48 kHz PCM Audio managers
 │       └── res/                                  # MotoCross adaptive vector launcher icons & themes
 └── docs/

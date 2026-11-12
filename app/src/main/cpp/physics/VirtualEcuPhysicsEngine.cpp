@@ -68,7 +68,8 @@ void VirtualEcuPhysicsEngine::forceManualGearOrClutch(
 }
 
 void VirtualEcuPhysicsEngine::registerGearChange(int newGear, int transmissionCode) noexcept {
-    newGear = std::clamp(newGear, 0, 6);
+    const int maxGears = std::clamp(bike_.gearCount, 1, 8);
+    newGear = std::clamp(newGear, 0, maxGears);
     if (newGear == currentGear_) return;
 
     // Bölüm 4.6: Vites büyütmede son tepe devir çizgisi 1.8 saniye asılı kalır (Peak-Hold)
@@ -79,7 +80,7 @@ void VirtualEcuPhysicsEngine::registerGearChange(int newGear, int transmissionCo
     currentGear_ = newGear;
     transmissionStateCode_ = transmissionCode;
     gearShiftAnimProgress_ = 0.0f;   // Vites rakamı geçiş animasyonu yeniden başlar
-    shiftCooldownSec_ = 0.30;
+    shiftCooldownSec_ = (bike_.transmissionTypeCode == 1 || bike_.transmissionTypeCode == 2) ? 0.18 : 0.30;
     // UPSHIFT(2)/DOWNSHIFT(3) durumu renderer'ın görebilmesi için 150 ms tutulur
     shiftStateHoldSec_ = (transmissionCode == 2 || transmissionCode == 3) ? 0.15 : 0.0;
 }
@@ -114,7 +115,8 @@ void VirtualEcuPhysicsEngine::recomputeOptimalShiftRpms() noexcept {
     // T_engine(RPM_opt[n]) * i_gear[n] =
     //     T_engine(RPM_opt[n] * (i_gear[n+1] / i_gear[n])) * i_gear[n+1]
     // -------------------------------------------------------------------------
-    for (int g = 0; g < 5; ++g) {
+    const int maxGears = std::clamp(bike_.gearCount, 1, 8);
+    for (int g = 0; g < maxGears - 1; ++g) {
         const double iCurr = bike_.gearRatios[g];
         const double iNext = bike_.gearRatios[g + 1];
         if (iCurr <= 0.0 || iNext <= 0.0) {
@@ -135,8 +137,9 @@ void VirtualEcuPhysicsEngine::recomputeOptimalShiftRpms() noexcept {
         }
         bike_.optimalShiftRpmPerGear[g] = optRpm;
     }
-    // 6. viteste üst vites olmadığı için Redline
-    bike_.optimalShiftRpmPerGear[5] = bike_.redlineRpm;
+    for (int g = maxGears - 1; g < 8; ++g) {
+        bike_.optimalShiftRpmPerGear[g] = bike_.redlineRpm;
+    }
 }
 
 VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
@@ -256,14 +259,24 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
         static_cast<double>(bike_.rearSprocketTeeth) /
         static_cast<double>(std::max(1, bike_.frontSprocketTeeth));
 
-    for (int n = 0; n < 6; ++n) {
+    const int maxGears = std::clamp(bike_.gearCount, 1, 8);
+    for (int n = 0; n < 8; ++n) {
+        const double gRatio = (n < maxGears) ? bike_.gearRatios[n] : bike_.gearRatios[maxGears - 1];
         out.kinematicRpmPerGear[n] =
-            wheelRpm * bike_.primaryReductionRatio * finalDriveRatio * bike_.gearRatios[n];
+            wheelRpm * bike_.primaryReductionRatio * finalDriveRatio * gRatio;
     }
 
     // -------------------------------------------------------------------------
     // Bölüm 3.3: Gerçek Zamanlı Vites, Vites Artırma/Düşürme ve Debriyaj Durum Makinesi
-    // (3 Katmanlı Hibrit Algoritma)
+    // (GNSS hızı + şanzıman kinematiği + akustik doğrulama)
+    //
+    // Temel fikir: OBD/CAN yoksa vites, hız ve motor devri arasındaki kinematik
+    // bağıntıdan başka bir yolla güvenilir biçimde ölçülemez. Bu yüzden:
+    //   1. Her vites için RPM_kin = f(v_true) hesaplanır.
+    //   2. Sürüş yönüne göre planlanmış vites değiştirme devirleri (RPM_opt)
+    //      eşik olarak kullanılır: üst devirde büyüt, rölantiye yaklaşınca küçült.
+    //   3. Akustik RPM varsa kinematik eşleşme ile doğrulanır ve düzeltilir.
+    //   4. Sabit hızda (cruise) kısa vitesleme tespiti için ek histerezis uygulanır.
     // -------------------------------------------------------------------------
     if (shiftCooldownSec_ > 0.0) {
         shiftCooldownSec_ = std::max(0.0, shiftCooldownSec_ - safeDt);
@@ -277,149 +290,221 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
     const double rollingDragForceN = 0.015 * bike_.totalMassKg * GRAVITY;
     const double coastingDecelMs2 = -((aeroDragForceN + rollingDragForceN) / std::max(80.0, bike_.totalMassKg));
 
+    const bool acousticValid =
+        acousticConfidence > 0.50 &&
+        acousticRpm > bike_.idleRpm * 0.80 &&
+        acousticRpm < bike_.revLimiterRpm * 1.10;
+
     double targetRpm = bike_.idleRpm;
+    int resolvedGear = currentGear_;
+    double gearConfidence = 0.55;
 
     if (manualForcedGear_ >= 0) {
-        // Kullanıcı / Simülatör kontrol modu aktifse
-        currentGear_ = std::clamp(manualForcedGear_, 0, 6);
+        // Kullanıcı / simülatör kontrol modu
+        resolvedGear = std::clamp(manualForcedGear_, 0, maxGears);
+        currentGear_ = resolvedGear;
         isClutchPulled_ = manualClutchOverride_;
-        if (currentGear_ == 0) {
-            transmissionStateCode_ = 0; // NEUTRAL
+        gearConfidence = 1.0;
+        if (resolvedGear == 0) {
+            transmissionStateCode_ = 0;
             targetRpm = (manualThrottleRpm_ > 0.0) ? manualThrottleRpm_ : bike_.idleRpm;
         } else if (isClutchPulled_) {
-            transmissionStateCode_ = 4; // CLUTCH_PULLED_COASTING
+            transmissionStateCode_ = 4;
             targetRpm = (manualThrottleRpm_ > 0.0) ? manualThrottleRpm_ : bike_.idleRpm;
         } else {
-            transmissionStateCode_ = 1; // ENGAGED_IN_GEAR
+            transmissionStateCode_ = 1;
             targetRpm = (manualThrottleRpm_ > 0.0)
                 ? manualThrottleRpm_
-                : std::max(bike_.idleRpm, out.kinematicRpmPerGear[currentGear_ - 1]);
+                : std::max(bike_.idleRpm, out.kinematicRpmPerGear[resolvedGear - 1]);
         }
     } else if (trueSpeedMs < 0.75) {
-        // Dururken (v == 0): Yeşil 'N' (Neutral) veya 1. Vites Debriyaj Çekili
+        // Dururken: N (Neutral). Debriyaj çekiliyse de motor rölantide kalır.
         currentGear_ = 0;
+        resolvedGear = 0;
         isClutchPulled_ = false;
-        transmissionStateCode_ = 0; // NEUTRAL
-        targetRpm = (acousticConfidence > 0.40 && acousticRpm > bike_.idleRpm)
-            ? acousticRpm
-            : bike_.idleRpm;
+        transmissionStateCode_ = 0;
+        targetRpm = (acousticValid && acousticRpm > bike_.idleRpm) ? acousticRpm : bike_.idleRpm;
+        gearConfidence = 1.0;
+        cruiseTimerSec_ = 0.0;
+        shiftConfirmSec_ = 0.0;
+        pendingGear_ = 0;
+    } else if (bike_.transmissionTypeCode == 3) {
+        // CVT Varyatörlü Otomatik (Maxi-Scooter): Sürekli değişken kasnak oranı
+        isClutchPulled_ = false;
+        currentGear_ = 1;
+        resolvedGear = 1;
+        transmissionStateCode_ = 1;
+        const double throttleEffort = std::clamp((longitudinalAccelMs2 + 0.25) / 2.60, 0.0, 1.0);
+        const double lowRatio = std::max(0.5, bike_.gearRatios[0]);
+        const double highRatio = std::max(0.4, bike_.gearRatios[maxGears - 1]);
+        const double speedNorm = std::clamp(trueSpeedMs / 30.0, 0.0, 1.0);
+        const double effRatio = lowRatio + (highRatio - lowRatio) * std::clamp(speedNorm - throttleEffort * 0.28, 0.0, 1.0);
+        const double cvtKinRpm = wheelRpm * bike_.primaryReductionRatio * finalDriveRatio * effRatio;
+        const double cvtBandRpm = bike_.idleRpm + 1600.0 + (bike_.maxPowerRpm - (bike_.idleRpm + 1600.0)) * throttleEffort;
+        targetRpm = std::clamp(0.55 * cvtKinRpm + 0.45 * cvtBandRpm, bike_.idleRpm + 900.0, bike_.redlineRpm);
+        gearConfidence = 0.96;
     } else {
-        // Hareket halinde (v > 3 km/s):
-        // Katman 2: Debriyaj Çekili (Clutch-In) Algılama
-        // Motor freni ivmesi yoksa (a_x ≈ -k_drag * v^2) ve akustik devir rölantiye düşüyorsa
+        // ---------------------------------------------------------------------
+        // Debriyaj çekili (coasting) algılama: motor freni yerine sadece hava/
+        // yuvarlanma direnciyle yavaşlama + akustik devrin rölantiye düşmesi.
+        // ---------------------------------------------------------------------
         const bool isCoastingWithoutEngineBrake =
-            (trueSpeedMs > 0.85) &&
-            (std::abs(longitudinalAccelMs2 - coastingDecelMs2) < 0.38) &&
-            (acousticConfidence > 0.35 && acousticRpm < bike_.idleRpm * 1.45);
+            (trueSpeedMs > 1.2) &&
+            (std::abs(longitudinalAccelMs2 - coastingDecelMs2) < 0.32) &&
+            acousticValid && (acousticRpm < bike_.idleRpm * 1.45);
 
         if (isCoastingWithoutEngineBrake) {
             isClutchPulled_ = true;
-            transmissionStateCode_ = 4; // CLUTCH_PULLED_COASTING
-            targetRpm = std::max(bike_.idleRpm, acousticRpm);
+            transmissionStateCode_ = 4;
+            targetRpm = std::clamp(acousticRpm, bike_.idleRpm, bike_.revLimiterRpm * 0.5);
+            gearConfidence = 0.55;
         } else {
             isClutchPulled_ = false;
-            if (currentGear_ == 0) {
-                // Kalkış: 1. vites (gerekirse aşağıdaki Katman 1/3 doğrulaması düzeltir)
+            if (resolvedGear <= 0) {
+                resolvedGear = 1;
                 registerGearChange(1, 1);
             }
+            resolvedGear = std::clamp(resolvedGear, 1, maxGears);
 
-            // Katman 2: İvme Türevi (Jerk j_x = da_x/dt) ile Vites Artırma (Upshift) Algılama
-            // Quickshifter (40-80ms) veya debriyajlı geçiş (150-350ms):
-            // j_x < -15 m/s^3 düşüşü ardından j_x > +15 m/s^3 sıçraması
-            if (shiftCooldownSec_ <= 0.0) {
-                if (!upshiftDipDetected_ && longitudinalAccelMs2 > 0.8 && longitudinalJerkMs3 < -15.0) {
-                    upshiftDipDetected_ = true;
-                    upshiftDipElapsedSec_ = 0.0;
-                } else if (upshiftDipDetected_) {
-                    upshiftDipElapsedSec_ += safeDt;
-                    if (upshiftDipElapsedSec_ >= 0.035 && upshiftDipElapsedSec_ <= 0.380 &&
-                        longitudinalJerkMs3 > 15.0 && currentGear_ < 6) {
-                        // Vites Artırma (Upshift) gerçekleşti! (Peak-Hold registerGearChange içinde)
-                        registerGearChange(currentGear_ + 1, 2);
-                        upshiftDipDetected_ = false;
-                    } else if (upshiftDipElapsedSec_ > 0.400) {
-                        upshiftDipDetected_ = false;
-                    }
-                }
-
-                // Vites Düşürme (Downshift) Algılama:
-                // Yavaşlama/frenleme sırasında ara gaz (Rev-match blip) veya motor freni ivme sıçraması (Delta a_x < -1.2 m/s^2)
-                const double deltaAx = longitudinalAccelMs2 - prevAccelMs2_;
-                if (shiftCooldownSec_ <= 0.0 && longitudinalAccelMs2 < -0.5 && deltaAx < -1.2 && currentGear_ > 1) {
-                    const double nextLowerGearRpm = out.kinematicRpmPerGear[currentGear_ - 2];
-                    if (nextLowerGearRpm < bike_.revLimiterRpm * 0.96) {
-                        registerGearChange(currentGear_ - 1, 3);
-                    }
-                }
+            // Sabit hız süresi: kısa vitesleme/cruise tespiti
+            if (std::abs(longitudinalAccelMs2) < 0.20 && trueSpeedMs > 5.0) {
+                cruiseTimerSec_ += safeDt;
+            } else {
+                cruiseTimerSec_ = 0.0;
             }
 
-            // Katman 3: Tork Eğrisi Fiziksel Doğrulama - o viteste devir aralığı ve motorun
-            // üretebileceği maksimum ivme ölçülen ivmeyi karşılayabiliyor mu?
-            auto isGearPhysicallyFeasible = [&](int g) -> bool {
-                const double candRpm = out.kinematicRpmPerGear[g - 1];
-                if (candRpm < bike_.idleRpm * 0.72 || candRpm > bike_.revLimiterRpm * 1.04) {
-                    return false;
-                }
-                const double engineTorqueNm = interpolateEngineTorque(candRpm);
-                const double wheelTorqueNm = engineTorqueNm *
-                                             bike_.primaryReductionRatio *
-                                             finalDriveRatio *
-                                             bike_.gearRatios[g - 1] * 0.92; // %92 aktarma verimi
-                const double maxWheelForceN = wheelTorqueNm / (rEffMm / 1000.0);
-                const double maxPossibleAccelMs2 =
-                    (maxWheelForceN - aeroDragForceN - rollingDragForceN) / std::max(80.0, bike_.totalMassKg);
-                // Ölçülen ivme o vitesin fiziksel olarak üretebileceğinden büyükse o vites elenir
-                return !(g > 1 && longitudinalAccelMs2 > maxPossibleAccelMs2 + 0.65);
+            const double usableRpmSpan = std::max(2000.0, bike_.redlineRpm - bike_.idleRpm);
+            const double throttleEffort = std::clamp((longitudinalAccelMs2 - 0.15) / 3.10, 0.0, 1.0);
+            const double brakingEffort = std::clamp((-longitudinalAccelMs2 - 0.80) / 3.50, 0.0, 1.0);
+
+            const auto shiftUpRpmFor = [&](int g) -> double {
+                if (g < 1 || g >= maxGears) return bike_.redlineRpm;
+                const double peakShiftRpm = autoOptimalShiftMode_
+                    ? bike_.optimalShiftRpmPerGear[g - 1]
+                    : manualStage2Rpm_;
+                const double streetShiftRpm = bike_.idleRpm + usableRpmSpan * 0.43;
+                const double cruiseAdjust = (cruiseTimerSec_ > 1.6) ? (-usableRpmSpan * 0.05) : 0.0;
+                const double adaptiveUp = streetShiftRpm +
+                    (peakShiftRpm - streetShiftRpm) * std::pow(throttleEffort, 0.78) +
+                    cruiseAdjust;
+                return std::clamp(adaptiveUp, bike_.idleRpm + 1400.0, peakShiftRpm);
             };
 
-            if (shiftCooldownSec_ <= 0.0) {
-                int resolvedGear = currentGear_;
+            const auto shiftDownRpmFor = [&](int g) -> double {
+                if (g <= 1 || g > maxGears) return bike_.idleRpm;
+                const double iPrev = std::max(0.1, bike_.gearRatios[g - 2]);
+                const double iCurr = std::max(0.1, bike_.gearRatios[g - 1]);
+                const double stepRatio = iCurr / iPrev;
+                const double hysteresisCeiling = shiftUpRpmFor(g - 1) * stepRatio * 0.84;
+                const double baseDown = bike_.idleRpm +
+                    usableRpmSpan * (0.15 + 0.09 * throttleEffort + 0.10 * brakingEffort);
+                return std::clamp(
+                    std::min(hysteresisCeiling, baseDown),
+                    bike_.idleRpm * 1.12,
+                    bike_.redlineRpm * 0.65
+                );
+            };
 
-                if (acousticConfidence > 0.40) {
-                    // Katman 1: Akustik HPS devrine en yakın, fiziksel olarak mümkün vites (histerezisli)
-                    double minCost = 1e18;
-                    for (int g = 1; g <= 6; ++g) {
-                        if (!isGearPhysicallyFeasible(g)) continue;
-                        const double cost =
-                            std::abs(out.kinematicRpmPerGear[g - 1] - acousticRpm) * 1.5 +
-                            std::abs(g - currentGear_) * 260.0;
-                        if (cost < minCost) {
-                            minCost = cost;
-                            resolvedGear = g;
-                        }
+            // Akustik RPM ile en iyi kinematik vites eşleşmesi (varsa)
+            int acousticGear = resolvedGear;
+            double acousticBestCost = 1.0e9;
+            if (acousticValid) {
+                for (int g = 1; g <= maxGears; ++g) {
+                    const double kin = out.kinematicRpmPerGear[g - 1];
+                    if (kin < bike_.idleRpm * 0.55 || kin > bike_.revLimiterRpm * 1.08) continue;
+                    const double cost = std::abs(kin - acousticRpm) / std::max(1500.0, acousticRpm);
+                    if (cost < acousticBestCost) {
+                        acousticBestCost = cost;
+                        acousticGear = g;
                     }
-                } else if (!isGearPhysicallyFeasible(currentGear_)) {
-                    // Akustik kapalı: Katman 2 jerk olayları tek vites kaynağıdır. Mevcut vites ancak
-                    // fiziksel olarak imkânsız hale gelirse (kaçırılmış geçiş) en yakın mümkün vitese
-                    // düzeltilir: devir kesicinin üstündeyse yukarı, devir çok düşük ya da ivme o vitesin
-                    // torkunu aşıyorsa aşağı.
-                    const double curRpm = out.kinematicRpmPerGear[currentGear_ - 1];
-                    const int dir = (curRpm > bike_.revLimiterRpm * 1.04) ? +1 : -1;
-                    for (int step = 1; step < 6; ++step) {
-                        const int g = currentGear_ + dir * step;
-                        if (g < 1 || g > 6) break;
-                        if (isGearPhysicallyFeasible(g)) {
-                            resolvedGear = g;
-                            break;
-                        }
-                    }
-                }
-
-                if (resolvedGear != currentGear_) {
-                    registerGearChange(resolvedGear, (resolvedGear > currentGear_) ? 2 : 3);
                 }
             }
+
+            const double curKin = out.kinematicRpmPerGear[std::clamp(resolvedGear - 1, 0, maxGears - 1)];
+            const double curUpRpm = shiftUpRpmFor(resolvedGear);
+            const double downRpm = shiftDownRpmFor(resolvedGear);
+
+            // Öncelik sırası: aşırı devir koruması > akustik doğrulama > ivme-adaptif kinematik vites modeli
+            int desiredGear = resolvedGear;
+
+            if (curKin > bike_.revLimiterRpm * 0.96 && resolvedGear < maxGears) {
+                for (int g = resolvedGear + 1; g <= maxGears; ++g) {
+                    desiredGear = g;
+                    if (out.kinematicRpmPerGear[g - 1] <= shiftUpRpmFor(g) * 0.92) {
+                        break;
+                    }
+                }
+            } else if (acousticValid && shiftCooldownSec_ <= 0.0 && acousticGear != resolvedGear) {
+                const double currentCost =
+                    std::abs(curKin - acousticRpm) / std::max(1500.0, acousticRpm);
+                if (acousticBestCost + 0.06 < currentCost) {
+                    desiredGear = acousticGear;
+                }
+            }
+
+            if (desiredGear == resolvedGear && shiftCooldownSec_ <= 0.0) {
+                const bool notHardBraking = longitudinalAccelMs2 > -0.65;
+                if (resolvedGear < maxGears && notHardBraking && curKin >= curUpRpm) {
+                    desiredGear = resolvedGear + 1;
+                } else if (resolvedGear > 1 && curKin <= downRpm) {
+                    desiredGear = resolvedGear - 1;
+                }
+            }
+
+            // Vites teyit süresi: Quickshifter/DCT ise 65 ms, manuel sıralı ise 115 ms
+            const double reqConfirmSec = (bike_.transmissionTypeCode == 1 || bike_.transmissionTypeCode == 2) ? 0.065 : 0.115;
+            if (desiredGear != resolvedGear) {
+                if (pendingGear_ == desiredGear) {
+                    shiftConfirmSec_ += safeDt;
+                } else {
+                    pendingGear_ = desiredGear;
+                    shiftConfirmSec_ = 0.0;
+                }
+                if (shiftConfirmSec_ >= reqConfirmSec) {
+                    registerGearChange(desiredGear, desiredGear > resolvedGear ? 2 : 3);
+                    resolvedGear = currentGear_;
+                    pendingGear_ = 0;
+                    shiftConfirmSec_ = 0.0;
+                    cruiseTimerSec_ = 0.0;
+                }
+            } else {
+                pendingGear_ = 0;
+                shiftConfirmSec_ = 0.0;
+            }
+
+            currentGear_ = std::clamp(resolvedGear, 0, maxGears);
+            if (currentGear_ <= 0) {
+                currentGear_ = 1;
+            }
+
+            const double finalKin = out.kinematicRpmPerGear[currentGear_ - 1];
+            const double finalUpRpm = shiftUpRpmFor(currentGear_);
+
+            if (acousticValid) {
+                // Kinematik tahmin ile gerçek motor sesini harmanla: ibre ne yapay
+                // ne de GPS gürültüsüyle zıplasın.
+                targetRpm = 0.62 * finalKin + 0.38 * acousticRpm;
+                const double relErr = std::abs(finalKin - acousticRpm) / std::max(1200.0, acousticRpm);
+                gearConfidence = std::clamp(1.0 - relErr * 1.8, 0.35, 0.99);
+            } else {
+                const double lower = std::max(downRpm, bike_.idleRpm);
+                const double margin = std::min(
+                    std::abs(finalKin - lower),
+                    std::abs(finalUpRpm - finalKin)
+                ) / std::max(1000.0, finalUpRpm);
+                gearConfidence = std::clamp(0.42 + margin * 0.9, 0.40, 0.92);
+                if (cruiseTimerSec_ > 2.0) gearConfidence *= 0.88;
+                targetRpm = finalKin;
+            }
+
+            targetRpm = std::clamp(targetRpm, bike_.idleRpm, bike_.revLimiterRpm * 1.02);
 
             if (shiftStateHoldSec_ <= 0.0) {
                 transmissionStateCode_ = 1; // ENGAGED_IN_GEAR
             }
-            targetRpm = std::clamp(
-                out.kinematicRpmPerGear[currentGear_ - 1],
-                bike_.idleRpm,
-                bike_.revLimiterRpm * 1.02
-            );
         }
     }
+    gearConfidence_ = gearConfidence;
     prevAccelMs2_ = longitudinalAccelMs2;
 
     // -------------------------------------------------------------------------
@@ -475,7 +560,7 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
     //   RPM_stage2[n] = RPM_opt[n] - (d(RPM)/dt * tau_human)
     //   RPM_stage1[n] = RPM_stage2[n] - Delta_RPM_warn (Varsayılan: 1000 RPM önce)
     // -------------------------------------------------------------------------
-    const int activeGearIdx = std::clamp(currentGear_ - 1, 0, 5);
+    const int activeGearIdx = std::clamp(currentGear_ - 1, 0, maxGears - 1);
     const double baseOptRpm = autoOptimalShiftMode_
         ? bike_.optimalShiftRpmPerGear[activeGearIdx]
         : manualStage2Rpm_;
@@ -518,17 +603,18 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
         colorInvert = false;
     }
 
-    // Sanal Dyno Tekerlek Torku ve Beygir Gücü Hesabı
+    // Sanal Dyno Tekerlek Torku ve Beygir Gücü Hesabı (Gerçek aktarma tipi verimiyle)
     const double currentEngineTrq = interpolateEngineTorque(currentDisplayedRpm_);
-    const double currentGearRatio = (currentGear_ >= 1 && currentGear_ <= 6)
+    const double currentGearRatio = (currentGear_ >= 1 && currentGear_ <= maxGears)
         ? bike_.gearRatios[currentGear_ - 1]
         : 0.0;
+    const double eff = std::clamp(bike_.drivetrainEfficiency, 0.75, 0.98);
     const double wheelTorqueNm = (!isClutchPulled_ && currentGear_ > 0)
-        ? (currentEngineTrq * bike_.primaryReductionRatio * finalDriveRatio * currentGearRatio * 0.92)
+        ? (currentEngineTrq * bike_.primaryReductionRatio * finalDriveRatio * currentGearRatio * eff)
         : 0.0;
     const double enginePowerKw = (currentEngineTrq * currentDisplayedRpm_ * 2.0 * PI) / (60.0 * 1000.0);
     const double wheelHorsepower = (!isClutchPulled_ && currentGear_ > 0)
-        ? (enginePowerKw * 1.34102209 * 0.90)
+        ? (enginePowerKw * 1.34102209 * eff)
         : 0.0;
 
     out.currentGear = currentGear_;
@@ -547,6 +633,7 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
     out.gearShiftAnimProgress = gearShiftAnimProgress_;
     out.estimatedWheelHp = wheelHorsepower;
     out.estimatedWheelTorqueNm = wheelTorqueNm;
+    out.gearConfidence = gearConfidence_;
 
     // -------------------------------------------------------------------------
     // Bosch 6D IMU Tarzı Teker Derece Ölçer & Teker Metre (Wheelie Analyzer)

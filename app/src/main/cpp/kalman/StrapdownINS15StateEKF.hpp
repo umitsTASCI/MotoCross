@@ -26,6 +26,7 @@ struct EkfHistorySlot {
 class StrapdownINS15StateEKF {
 public:
     static constexpr double GRAVITY_MPS2 = 9.80665;
+    static constexpr double SPEED_HARD_LIMIT_MS = 100.0; // ~360 km/h fiziksel üst sınır
     static constexpr size_t OOSM_RING_BUFFER_SIZE = 512; // 400 Hz'de 1.28 saniye geçmiş tamponu
 
     StrapdownINS15StateEKF() noexcept;
@@ -73,9 +74,8 @@ public:
     ) const noexcept;
 
     // Anlık Çıktı Erişimcileri
-    double getTrueSpeedMs() const noexcept { return state_[3]; }
-    double getTrueSpeedKmh() const noexcept { return state_[3] * 3.6; }
-    double getTrueLongitudinalAccelMs2() const noexcept { return lastTrueAxMs2_; }
+    double getTrueSpeedMs() const noexcept;
+    double getTrueSpeedKmh() const noexcept { return getTrueSpeedMs() * 3.6; }    double getTrueLongitudinalAccelMs2() const noexcept { return lastTrueAxMs2_; }
     double getLateralAccelMs2() const noexcept { return lastTrueAyMs2_; }
     double getLongitudinalJerkMs3() const noexcept { return filteredJerkXMs3_; }
     double getLeanAngleRad() const noexcept { return state_[6]; }
@@ -83,6 +83,16 @@ public:
     double getPitchAngleRad() const noexcept { return state_[7]; }
     double getPitchAngleDeg() const noexcept { return state_[7] * (180.0 / 3.14159265358979323846); }
     double getAccelBiasX() const noexcept { return state_[9]; }
+
+    /** GNSS Doppler hızının yaşı [s]. Hiç fix yoksa büyük bir değer döner. */
+    double getGnssAgeSec() const noexcept;
+    /** Son kabul edilen GNSS hız doğruluğu [m/s]. */
+    double getGnssSpeedAccuracyMs() const noexcept { return gnssSpeedAccuracyMs_; }
+    /** Araç gerçekten duruyor mu? (GNSS + ZUPT histerezisi) */
+    bool isStationary() const noexcept { return stationary_; }
+    /** 0.0 = sadece EKF/IMU, 1.0 = taze GNSS Doppler. */
+    double getSpeedSourceBlend() const noexcept;
+
     void zeroLeanAndPitchNow() noexcept;
 
 private:
@@ -91,6 +101,9 @@ private:
         const math::Vec3d& accelBike,
         const math::Vec3d& gyroBike
     ) noexcept;
+
+    /** GNSS öncelikli ham hız tahmini (yumuşatma uygulanmadan). */
+    double computeRawTrueSpeedMs() const noexcept;
 
     std::array<double, 15> state_{};
     std::array<double, 15> P_{}; // 15-durumlu hata kovaryansı (köşegen + çapraz kuplaj)
@@ -106,6 +119,20 @@ private:
     std::array<EkfHistorySlot, OOSM_RING_BUFFER_SIZE> ringBuffer_{};
     size_t ringHead_{0};
     size_t ringCount_{0};
+
+    // GNSS Doppler hızı ve tazelik takibi (spike ve sürüklenme önleyici)
+    double gnssSpeedMs_{0.0};
+    double gnssSpeedAccuracyMs_{0.0};
+    int64_t lastPredictTimestampNanos_{0};
+    int64_t lastGnssArrivalNanos_{0};
+    int64_t lastGnssMeasurementNanos_{0};
+    double stationaryTimerSec_{0.0};
+    bool stationary_{true};
+    double lastAcceptedGnssMs_{0.0};
+    double filteredGnssAccelMs2_{0.0};
+
+    // İbre/ekran için yumuşatılmış hız çıktısı (GNSS merdiven gürültüsünü gizler).
+    double outputSpeedMs_{0.0};
 };
 
 } // namespace oemcluster::kalman

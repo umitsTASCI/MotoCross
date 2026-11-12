@@ -30,14 +30,17 @@ object NativeTelemetryEngineBridge {
     private val _telemetryState = MutableStateFlow(UnifiedTelemetryState())
     val telemetryState: StateFlow<UnifiedTelemetryState> = _telemetryState.asStateFlow()
 
-    // Sıfır GC (Zero-Allocation) için önceden ayrılmış 39-elemanlı JNI okuma tamponu
-    private val nativeReadBuffer = DoubleArray(39)
+    // Sıfır GC (Zero-Allocation) için önceden ayrılmış 47-elemanlı JNI okuma tamponu
+    private val nativeReadBuffer = DoubleArray(47)
 
     // Harici C++ JNI Fonksiyon Bildirimleri
     external fun nativeResetEngine()
 
     external fun nativeConfigureBikeProfile(
         cylinderCount: Int,
+        gearCount: Int,
+        transmissionTypeCode: Int,
+        drivetrainEfficiency: Double,
         frontSprocketTeeth: Int,
         rearSprocketTeeth: Int,
         primaryReductionRatio: Double,
@@ -98,6 +101,11 @@ object NativeTelemetryEngineBridge {
 
     external fun nativeSetAcousticEnabled(enabled: Boolean)
 
+    external fun nativeUpdateGnssStatus(
+        visibleSatellites: Int,
+        horizontalAccuracyM: Double
+    )
+
     external fun nativeUpdateAmbientLight(
         ambientLux: Float,
         themeOverrideMode: Int
@@ -115,14 +123,21 @@ object NativeTelemetryEngineBridge {
     fun applyActiveBikeProfileToNative(profile: BikeMechanicalProfile) {
         if (!nativeLibraryLoaded) return
 
-        val gears = DoubleArray(6) { idx ->
-            profile.gearRatios.getOrElse(idx) { 1.0 }
+        val effectiveCount = profile.effectiveGearCount
+        val gears = DoubleArray(8) { idx ->
+            profile.gearRatios.getOrElse(idx) {
+                profile.gearRatios.lastOrNull() ?: 1.0
+            }
         }
         val trqRpms = profile.torqueCurve.map { it.rpm }.toDoubleArray()
         val trqNms = profile.torqueCurve.map { it.torqueNm }.toDoubleArray()
+        val totalMass = (profile.bikeWetMassKg + profile.riderAndCargoMassKg).coerceAtLeast(110.0)
 
         nativeConfigureBikeProfile(
             cylinderCount = profile.engineConfig.cylinderCount,
+            gearCount = effectiveCount,
+            transmissionTypeCode = profile.transmissionType.ordinal,
+            drivetrainEfficiency = profile.finalDriveType.mechanicalEfficiency,
             frontSprocketTeeth = profile.frontSprocketTeeth,
             rearSprocketTeeth = profile.rearSprocketTeeth,
             primaryReductionRatio = profile.primaryReductionRatio,
@@ -138,7 +153,7 @@ object NativeTelemetryEngineBridge {
             maxPowerRpm = profile.maxPowerRpm,
             redlineRpm = profile.redlineRpm,
             revLimiterRpm = profile.revLimiterRpm,
-            totalMassKg = profile.totalMassKg,
+            totalMassKg = totalMass,
             dragCdA = profile.dragCoefficientAreaCdA,
             torqueRpmPointsArray = trqRpms,
             torqueNmPointsArray = trqNms
@@ -200,7 +215,14 @@ object NativeTelemetryEngineBridge {
                 currentWheelieDistanceMeters = b[35],
                 maxWheelieAngleDeg = b[36],
                 longestWheelieDurationSec = b[37],
-                longestWheelieDistanceMeters = b[38]
+                longestWheelieDistanceMeters = b[38],
+                gearConfidence = b[39],
+                gpsSpeedAgeSec = b[40],
+                gpsSpeedAccuracyMs = b[41],
+                isStationary = b[42] > 0.5,
+                gpsSpeedSourceBlend = b[43],
+                gpsSatelliteCount = b[44].toInt(),
+                gpsHorizontalAccuracyM = b[45]
             )
         }
     }

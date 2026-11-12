@@ -53,8 +53,8 @@ data class TireSpecification(
 
     companion object {
         fun parse(spec: String, defaultSquish: Double = 0.972): TireSpecification {
-            // Örn: "150/60 R17" veya "190/55 ZR17"
-            val regex = Regex("""(\d{3})\s*/\s*(\d{2})\s*[A-Za-z]*\s*(\d{2})""")
+            // Örn: "90/90 R17", "150/60 R17" veya "190/55 ZR17"
+            val regex = Regex("""(\d{2,3})\s*/\s*(\d{2,3})\s*[A-Za-z-]*\s*(\d{2})""")
             val match = regex.find(spec.trim())
             return if (match != null) {
                 val w = match.groupValues[1].toDouble()
@@ -75,6 +75,33 @@ data class TireSpecification(
 }
 
 /**
+ * Şanzıman Tipi (Vites geçiş karakteristiği ve CVT varyatör fiziği için)
+ */
+@Serializable
+enum class TransmissionType(
+    val displayName: String,
+    val shiftConfirmSec: Double
+) {
+    MANUAL_SEQUENTIAL("Manuel Sıralı Şanzıman", 0.12),
+    QUICKSHIFTER_BIDIRECTIONAL("Quickshifter + Auto-Blipper", 0.065),
+    DCT_DUAL_CLUTCH("DCT Çift Kavrama", 0.055),
+    CVT_VARIATOR("CVT Varyatör (Otomatik)", 0.04)
+}
+
+/**
+ * Son Aktarma Tipi (Tekerlek beygir gücü ve tork kaybı hesabı için)
+ */
+@Serializable
+enum class FinalDriveType(
+    val displayName: String,
+    val mechanicalEfficiency: Double
+) {
+    CHAIN("Zincir Aktarma (%93 Verim)", 0.93),
+    BELT("Karbon Kayış Aktarma (%90 Verim)", 0.90),
+    SHAFT("Şaft / Kardan Aktarma (%86 Verim)", 0.86)
+}
+
+/**
  * Motor Tork Eğrisi Noktası (RPM -> Krank Torku [Nm])
  */
 @Serializable
@@ -87,7 +114,7 @@ data class TorqueCurvePoint(
  * ALTIN KURAL (Bölüm 1.2):
  * Kullanıcının "Garajım (My Bike Profile)" menüsünde ayarladığı motosiklet özellikleri
  * uygulamanın TEK GERÇEK VERİ KAYNAĞIDIR (Single Source of Truth).
- * Ekranda seçilen 105 gösterge modeli tamamen görsel birer arayüzdür (UI Skin).
+ * Ekranda seçilen 270 gösterge modeli tamamen görsel birer arayüzdür (UI Skin).
  */
 @Serializable
 data class BikeMechanicalProfile(
@@ -99,7 +126,7 @@ data class BikeMechanicalProfile(
     val frontSprocketTeeth: Int,        // Z_front
     val rearSprocketTeeth: Int,         // Z_rear
     val primaryReductionRatio: Double,  // i_primary
-    val gearRatios: List<Double>,       // i_gear[1..6] (1-indeksli erişim için 6 eleman)
+    val gearRatios: List<Double>,       // i_gear[1..N] (4..8 vites destekli)
     val rearTire: TireSpecification,
     val frontTire: TireSpecification,
     val idleRpm: Double,
@@ -111,13 +138,46 @@ data class BikeMechanicalProfile(
     val revLimiterRpm: Double,
     val totalMassKg: Double,            // Motosiklet + Sürücü ağırlığı (kg)
     val dragCoefficientAreaCdA: Double = 0.34, // Aerodinamik direnç katsayısı * Ön Alan (m^2)
-    val torqueCurve: List<TorqueCurvePoint>
+    val torqueCurve: List<TorqueCurvePoint>,
+    // --- Detaylı Mühendislik & Şasi Parametreleri ---
+    val transmissionGearCount: Int = gearRatios.size.coerceIn(1, 8),
+    val transmissionType: TransmissionType = TransmissionType.MANUAL_SEQUENTIAL,
+    val finalDriveType: FinalDriveType = FinalDriveType.CHAIN,
+    val displacementCc: Int = (maxTorqueNm * 9.6).toInt().coerceIn(50, 2500),
+    val boreMm: Double = 78.0,
+    val strokeMm: Double = 52.0,
+    val compressionRatio: Double = 11.8,
+    val bikeWetMassKg: Double = (totalMassKg - 78.0).coerceAtLeast(65.0),
+    val riderAndCargoMassKg: Double = 78.0,
+    val wheelbaseMm: Double = 1410.0,
+    val seatHeightMm: Double = 815.0,
+    val fuelTankCapacityLiters: Double = 16.0,
+    val avgFuelConsumptionLPer100Km: Double = 4.8,
+    val hasSlipperClutch: Boolean = true
 ) {
     /**
      * İkincil (Zincir/Kayış/Şaft) redüksiyon oranı: Z_rear / Z_front
      */
     val finalDriveRatio: Double
         get() = rearSprocketTeeth.toDouble() / max(1, frontSprocketTeeth).toDouble()
+
+    /**
+     * Etkin vites sayısı (1..8).
+     */
+    val effectiveGearCount: Int
+        get() = transmissionGearCount.coerceIn(1, min(8, max(1, gearRatios.size)))
+
+    /**
+     * Belirli bir devirde ortalama piston hızı (m/s): V_piston = 2 * (stroke_m) * (RPM / 60)
+     */
+    fun meanPistonSpeedMs(rpm: Double = redlineRpm): Double =
+        2.0 * (strokeMm / 1000.0) * (rpm / 60.0)
+
+    /**
+     * Tam depo teorik menzil (km)
+     */
+    val fullTankRangeKm: Double
+        get() = (fuelTankCapacityLiters / max(1.2, avgFuelConsumptionLPer100Km)) * 100.0
 
     /**
      * Verilen herhangi bir RPM değerinde motor krank torkunu (Nm)
@@ -151,7 +211,7 @@ data class BikeMechanicalProfile(
      * T_engine(RPM_opt[n]) * i_gear[n] = T_engine(RPM_opt[n] * (i_gear[n+1] / i_gear[n])) * i_gear[n+1]
      */
     fun computeOptimalShiftRpmForGear(gearIndexOneBased: Int): Double {
-        val gearCount = gearRatios.size
+        val gearCount = effectiveGearCount
         if (gearIndexOneBased < 1 || gearIndexOneBased >= gearCount) {
             return redlineRpm
         }
@@ -196,12 +256,35 @@ data class BikeMechanicalProfile(
     }
 
     /**
-     * Tüm vitesler (1..6) için matematiksel optimum vites değiştirme devirlerini döndürür.
+     * Tüm etkin vitesler (1..N) için matematiksel optimum vites değiştirme devirlerini döndürür.
      */
     fun computeAllOptimalShiftRpms(): DoubleArray {
-        return DoubleArray(gearRatios.size) { idx ->
+        return DoubleArray(effectiveGearCount) { idx ->
             computeOptimalShiftRpmForGear(idx + 1)
         }
     }
+
+    /**
+     * Belirli bir viteste, redline devrinde ulaşılabilecek teorik tekerlek hızı.
+     * Zincir son dişli oranı, birincil redüksiyon ve yüklü lastik yarıçapı
+     * birlikte kullanılır. Drag/son hız tahminleri ve garaj bilgi paneli için.
+     */
+    fun theoreticalSpeedKmh(
+        gearIndexOneBased: Int,
+        rpm: Double = redlineRpm,
+        includeSquish: Boolean = true
+    ): Double {
+        val gear = gearRatios.getOrElse(gearIndexOneBased - 1) { 1.0 }
+        if (gear <= 0.0 || primaryReductionRatio <= 0.0 || finalDriveRatio <= 0.0) return 0.0
+        val radiusMm = rearTire.unloadedRadiusMm *
+            (if (includeSquish) rearTire.staticSquishFactor else 1.0)
+        val wheelRpm = rpm / (primaryReductionRatio * finalDriveRatio * gear)
+        val circumferenceM = 2.0 * Math.PI * radiusMm / 1000.0
+        return wheelRpm * circumferenceM * 60.0 / 1000.0
+    }
+
+    /** 1..N etkin viteslerin redline'daki teorik hızları (km/h). */
+    fun theoreticalSpeedTableKmh(): List<Double> =
+        (0 until effectiveGearCount).map { theoreticalSpeedKmh(it + 1) }
 }
 

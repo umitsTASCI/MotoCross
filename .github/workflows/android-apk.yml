@@ -36,7 +36,7 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Build Debug APK (105 OEM Clusters + C++20 400Hz EKF Engine)
+      - name: Build Debug APK (270 OEM Clusters + C++20 400Hz EKF Engine)
         run: gradle assembleDebug --stacktrace --no-daemon
 
       - name: Prepare APK Package
@@ -58,7 +58,7 @@ jobs:
           name: "🏍️ MotoCross v1.0.0 (OEM-Cluster Pro) — Official Android APK"
           body: |
             ## 🏍️ MotoCross (`OEM-Cluster Pro`) v1.0.0 — Ready-to-Install Android APK
-            **105 Factory Motorcycle Instrument Clusters • 400 Hz C++20 NDK 15-State EKF • 48 kHz Acoustic FFT • 120 Hz Virtual ECU • Wheelie Angle & Wheelie Meter (`°`, `s`, `m`)**
+            **270 Factory Motorcycle Instrument Clusters • 400 Hz C++20 NDK 15-State EKF • 48 kHz Acoustic FFT • 120 Hz Virtual ECU • Wheelie Angle & Wheelie Meter (`°`, `s`, `m`)**
 
             ---
 

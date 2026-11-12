@@ -2,6 +2,7 @@
 #include <atomic>
 #include <mutex>
 #include <algorithm>
+#include <cmath>
 #include "../kalman/MountCalibrator.hpp"
 #include "../kalman/StrapdownINS15StateEKF.hpp"
 #include "../acoustic/AcousticFftRpmDetector.hpp"
@@ -9,7 +10,7 @@
 
 namespace {
 
-constexpr jsize TELEMETRY_PACK_SIZE = 39;
+constexpr jsize TELEMETRY_PACK_SIZE = 46;
 
 struct NativeEngineInstance {
     // IMU/EKF/ECU kilidi (400 Hz sensör iş parçacığı + 120 Hz render iş parçacığı)
@@ -25,6 +26,10 @@ struct NativeEngineInstance {
     // Akustik sonuçlar kilitsiz okunur
     std::atomic<double> acousticRpm{0.0};
     std::atomic<double> acousticConfidence{0.0};
+
+    // GNSS uydu durumu (renderer'da GPS kalitesi göstergesi için)
+    std::atomic<int> gnssSatellites{0};
+    std::atomic<double> gnssHorizontalAccuracyM{99.0};
 
     oemcluster::math::Vec3d lastRawPhoneAccel{0.0, 9.5, 2.5};
     int64_t lastImuTimestampNanos{0};
@@ -58,6 +63,9 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeConfigureBikeP
     JNIEnv* env,
     jobject /*thiz*/,
     jint cylinderCount,
+    jint gearCount,
+    jint transmissionTypeCode,
+    jdouble drivetrainEfficiency,
     jint frontSprocketTeeth,
     jint rearSprocketTeeth,
     jdouble primaryReductionRatio,
@@ -80,12 +88,15 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeConfigureBikeP
 ) {
     oemcluster::physics::NativeBikeMechanicalConfig cfg{};
     cfg.cylinderCount = cylinderCount;
+    cfg.gearCount = std::clamp(static_cast<int>(gearCount), 1, 8);
+    cfg.transmissionTypeCode = std::clamp(static_cast<int>(transmissionTypeCode), 0, 3);
+    cfg.drivetrainEfficiency = std::clamp(static_cast<double>(drivetrainEfficiency), 0.75, 0.99);
     cfg.frontSprocketTeeth = frontSprocketTeeth;
     cfg.rearSprocketTeeth = rearSprocketTeeth;
     cfg.primaryReductionRatio = primaryReductionRatio;
 
     if (gearRatiosArray != nullptr) {
-        const jsize len = std::min<jsize>(6, env->GetArrayLength(gearRatiosArray));
+        const jsize len = std::min<jsize>(8, env->GetArrayLength(gearRatiosArray));
         jdouble* elems = env->GetDoubleArrayElements(gearRatiosArray, nullptr);
         for (jsize i = 0; i < len; ++i) {
             cfg.gearRatios[i] = elems[i];
@@ -241,6 +252,19 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeIngestGnssDopp
 }
 
 JNIEXPORT void JNICALL
+Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeUpdateGnssStatus(
+    JNIEnv* /*env*/,
+    jobject /*thiz*/,
+    jint visibleSatellites,
+    jdouble horizontalAccuracyM
+) {
+    g_engine.gnssSatellites.store(std::max(0, static_cast<int>(visibleSatellites)), std::memory_order_relaxed);
+    if (std::isfinite(horizontalAccuracyM) && horizontalAccuracyM >= 0.0) {
+        g_engine.gnssHorizontalAccuracyM.store(horizontalAccuracyM, std::memory_order_relaxed);
+    }
+}
+
+JNIEXPORT void JNICALL
 Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeIngestMicrophonePcm48kHz(
     JNIEnv* env,
     jobject /*thiz*/,
@@ -326,7 +350,7 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeStepAndReadTel
         is299Locked
     );
 
-    // 38-elemanlı sıkıştırılmış double dizisi üzerinden sıfır-tahsisli (zero-allocation) JNI aktarımı.
+    // 43-elemanlı sıkıştırılmış double dizisi üzerinden sıfır-tahsisli (zero-allocation) JNI aktarımı.
     // İndeks düzeni NativeTelemetryEngineBridge.kt içindeki okuma ile birebir aynı olmalıdır.
     jdouble pack[TELEMETRY_PACK_SIZE];
     pack[0]  = trueSpeedMs;
@@ -368,6 +392,13 @@ Java_com_oemcluster_pro_sensors_NativeTelemetryEngineBridge_nativeStepAndReadTel
     pack[36] = ecuOut.maxWheelieAngleDeg;
     pack[37] = ecuOut.longestWheelieDurationSec;
     pack[38] = ecuOut.longestWheelieDistanceMeters;
+    pack[39] = ecuOut.gearConfidence;
+    pack[40] = g_engine.ekf15.getGnssAgeSec();
+    pack[41] = g_engine.ekf15.getGnssSpeedAccuracyMs();
+    pack[42] = g_engine.ekf15.isStationary() ? 1.0 : 0.0;
+    pack[43] = g_engine.ekf15.getSpeedSourceBlend();
+    pack[44] = static_cast<double>(g_engine.gnssSatellites.load(std::memory_order_relaxed));
+    pack[45] = g_engine.gnssHorizontalAccuracyM.load(std::memory_order_relaxed);
 
     env->SetDoubleArrayRegion(outTelemetryBuffer, 0, TELEMETRY_PACK_SIZE, pack);
 }

@@ -75,13 +75,13 @@
     <text x="0" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="68" font-weight="900" fill="#FFFFFF" letter-spacing="-1">Moto<tspan fill="#FF6600">Cross</tspan></text>
 
     <text x="0" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="600" fill="#CBD5E1">
-      105 Factory Motorcycle Instrument Clusters • C++20 400 Hz EKF • Virtual ECU
+      270 Factory Motorcycle Instrument Clusters • C++20 400 Hz EKF • Virtual ECU
     </text>
 
     <!-- Feature Pills -->
     <g transform="translate(0, 102)">
       <rect x="0" y="0" width="165" height="34" rx="8" fill="#131C2B" stroke="#FF6600" stroke-width="1.5"/>
-      <text x="82" y="22" font-family="monospace, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">105 OEM CLUSTERS</text>
+      <text x="82" y="22" font-family="monospace, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">270 OEM CLUSTERS</text>
 
       <rect x="178" y="0" width="175" height="34" rx="8" fill="#131C2B" stroke="#00E5FF" stroke-width="1.5"/>
       <text x="265" y="22" font-family="monospace, sans-serif" font-size="13" font-weight="700" fill="#00E5FF" text-anchor="middle">400 Hz 15-STATE EKF</text>
