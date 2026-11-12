@@ -249,7 +249,10 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
         (longitudinalAccelMs2 / GRAVITY) * (0.035 / cosLean)
     );
     out.slipRatioLambda = slipLambda;
-    out.tractionControlActive = (slipLambda > 0.045);
+    // Bu basit modelde lambda aralığı ~0.018 ile sınırlıdır ((a_x/g) * 0.035);
+    // 0.012 eşiği (a_x ≈ 3.4 m/s²) teker kayması için gerçekçi bir tetik noktasıdır.
+    // (Eski 0.045 eşiğine bu formülle asla ulaşılamazdı.)
+    out.tractionControlActive = (slipLambda > 0.012);
 
     const double wheelRpm =
         (trueSpeedMs * (1.0 + slipLambda) * 60.0) /
@@ -451,8 +454,12 @@ VirtualEcuTelemetryOutput VirtualEcuPhysicsEngine::stepPhysics120Hz(
                 }
             }
 
-            // Vites teyit süresi: Quickshifter/DCT ise 65 ms, manuel sıralı ise 115 ms
-            const double reqConfirmSec = (bike_.transmissionTypeCode == 1 || bike_.transmissionTypeCode == 2) ? 0.065 : 0.115;
+            // Vites teyit süresi: Quickshifter 65 ms, DCT 55 ms, manuel sıralı 120 ms, CVT 40 ms
+            // (BikeMechanicalProfile.TransmissionType shiftConfirmSec değerleriyle aynı kaynak)
+            const double reqConfirmSec = (bike_.transmissionTypeCode == 3) ? 0.040
+                : (bike_.transmissionTypeCode == 2) ? 0.055
+                : (bike_.transmissionTypeCode == 1) ? 0.065
+                : 0.120;
             if (desiredGear != resolvedGear) {
                 if (pendingGear_ == desiredGear) {
                     shiftConfirmSec_ += safeDt;

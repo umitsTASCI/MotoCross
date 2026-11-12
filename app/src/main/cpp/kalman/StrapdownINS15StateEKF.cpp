@@ -279,9 +279,10 @@ void StrapdownINS15StateEKF::updateGnssDopplerOosm(
     // 2) Hareketsizlik histerezisi: 0.8 m/s altındaki Doppler gürültüsü ekranda
     //    1-2 km/h titreme yapmasın. 0.7 s boyunca sakin kalırsa hız tam 0'a çekilir.
     // -------------------------------------------------------------------------
-    if (vGnss < 0.80 && acc < 1.6) {
-        stationaryTimerSec_ += 0.10;
-    } else if (vGnss > 1.60) {
+    // İvmeölçer sapmasını uzlaştırıcı öğrenmenin tek zaman kaynağı 400 Hz IMU
+    // döngüsüdür (orası gerçek dt ile artırır); burada ek +0.10 puan eklemek
+    // sayacı iki kat hızlı şişirip 0.70 s kapısını ~0.35 s'de tetikliyordu.
+    if (vGnss > 1.60) {
         stationaryTimerSec_ = 0.0;
         stationary_ = false;
     }
@@ -290,7 +291,9 @@ void StrapdownINS15StateEKF::updateGnssDopplerOosm(
         gnssSpeedMs_ = 0.0;
         state_[3] = 0.0;
         // Dururken ivmeölçer sapmasını yavaşça öğren (mount açısı hatasını azaltır).
-        state_[9] = std::clamp(state_[9] - lastTrueAxMs2_ * 0.002, -1.5, 1.5);
+        // axTrue > 0 iken sapma tahminini artırmak, g sin(phi) arındırmasının kalan
+        // ofsetini sıfıra çeker; işaret pozitif yöndedir.
+        state_[9] = std::clamp(state_[9] + lastTrueAxMs2_ * 0.002, -1.5, 1.5);
         return;
     }
 

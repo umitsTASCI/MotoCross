@@ -47,7 +47,7 @@ class SimulationController {
 
     fun selectGear(value: Int) {
         active = true
-        gear = value.coerceIn(0, 6)
+        gear = value.coerceIn(0, 8)
         if (gear > 0) clutchIn = false
         if (gear == 0) clutchIn = true
         if (speedKmh < 8f && gear > 0) speedKmh = 18f + gear * 8f

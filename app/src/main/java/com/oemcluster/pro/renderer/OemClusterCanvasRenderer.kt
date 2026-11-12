@@ -42,6 +42,9 @@ fun OemClusterCanvasRenderer(
     rpmScalingMode: RpmScalingMode,
     wheelieDisplayMode: WheelieGaugeDisplayMode,
     useMph: Boolean,
+    useFahrenheit: Boolean = false,
+    clock24h: Boolean = true,
+    fuelUnitCode: String = "l100km",
     chromaKeyGreenScreen: Boolean,
     oledPixelShiftOffset: Offset,
     language: AppLanguage,
@@ -115,6 +118,9 @@ fun OemClusterCanvasRenderer(
             speedValue = speedValue,
             speedUnit = if (useMph) "mph" else "km/h",
             useMph = useMph,
+            useFahrenheit = useFahrenheit,
+            clock24h = clock24h,
+            fuelUnitCode = fuelUnitCode,
             shiftOffset = if (oledPixelShiftOffset == Offset.Zero) Offset.Zero else oledPixelShiftOffset,
             tripKm = tripKm,
             odometerKm = odometerKm,
@@ -131,20 +137,23 @@ fun OemClusterCanvasRenderer(
 
         translate(ctx.shiftOffset.x, ctx.shiftOffset.y) {
             drawBackdrop(ctx)
-            when (spec.geometryType) {
-                GaugeGeometryType.BOOMERANG_BAR_TFT -> drawBoomerangTft(ctx)
-                GaugeGeometryType.CURVED_SWEEP_BAR_TFT -> drawCurvedSweepTft(ctx)
-                GaugeGeometryType.CIRCULAR_RING_TFT -> drawCircularRingTft(ctx)
-                GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT -> drawSharpHorizontalEvo(ctx)
-                GaugeGeometryType.SYMMETRIC_PINCER_BAR_TFT -> drawSymmetricPincer(ctx)
-                GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD -> drawCentralAnalogHybrid(ctx)
-                GaugeGeometryType.FIVE_DIAL_HAYABUSA_HYBRID -> drawHayabusaFiveDial(ctx)
-                GaugeGeometryType.DUAL_CLASSIC_ANALOG -> drawDualClassicAnalog(ctx)
-                GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD -> drawSinglePuck(ctx)
-                GaugeGeometryType.F1_DIGITAL_ARC_BAR -> drawF1DigitalArc(ctx)
-                GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT -> drawRallyTower(ctx)
-                GaugeGeometryType.PANORAMIC_SPLIT_TFT -> drawPanoramicSplit(ctx)
+            if (!tryDrawBespokeOemCluster(ctx)) {
+                when (spec.geometryType) {
+                    GaugeGeometryType.BOOMERANG_BAR_TFT -> drawBoomerangTft(ctx)
+                    GaugeGeometryType.CURVED_SWEEP_BAR_TFT -> drawCurvedSweepTft(ctx)
+                    GaugeGeometryType.CIRCULAR_RING_TFT -> drawCircularRingTft(ctx)
+                    GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT -> drawSharpHorizontalEvo(ctx)
+                    GaugeGeometryType.SYMMETRIC_PINCER_BAR_TFT -> drawSymmetricPincer(ctx)
+                    GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD -> drawCentralAnalogHybrid(ctx)
+                    GaugeGeometryType.FIVE_DIAL_HAYABUSA_HYBRID -> drawHayabusaFiveDial(ctx)
+                    GaugeGeometryType.DUAL_CLASSIC_ANALOG -> drawDualClassicAnalog(ctx)
+                    GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD -> drawSinglePuck(ctx)
+                    GaugeGeometryType.F1_DIGITAL_ARC_BAR -> drawF1DigitalArc(ctx)
+                    GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT -> drawRallyTower(ctx)
+                    GaugeGeometryType.PANORAMIC_SPLIT_TFT -> drawPanoramicSplit(ctx)
+                }
             }
+            drawModelUniqueHardwareSignature(ctx)
 
             val showWheelie = when (wheelieDisplayMode) {
                 WheelieGaugeDisplayMode.ALWAYS_VISIBLE -> true

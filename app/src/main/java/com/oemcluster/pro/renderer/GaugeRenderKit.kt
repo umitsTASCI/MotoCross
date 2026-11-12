@@ -34,6 +34,10 @@ internal val RL_GREEN = Color(0xFF20E070)
 internal val RL_AMBER = Color(0xFFFFB300)
 internal val RL_ICE = Color(0xFFEAF2FF)
 
+/** Model-specific sinem — aynı kadranın her açılışta farklı piksel ofseti (OLED shift) değil, statik farklı kadran kimliği. */
+internal fun skinTilt(skinId: String, salt: Int, amplitude: Float): Float =
+    skinJitter(skinId, salt) * amplitude
+
 internal fun hexColor(value: Long): Color = Color(value)
 
 /**
@@ -61,6 +65,11 @@ internal fun skinJitter(skinId: String, seed: Int): Float {
     val v = ((h xor (h ushr 40)) and 0xffff).toLong()
     return (v / 65535.0).toFloat() * 2f - 1f
 }
+
+/** Sıcaklık birimini uygular: 40..120 °C aralığına karşılık 104..248 °F */
+internal fun formatTemp(celsius: Double, useFahrenheit: Boolean): String =
+    if (useFahrenheit) "${(celsius * 9.0 / 5.0 + 32.0).roundToInt()}°F"
+    else "${celsius.roundToInt()}°C"
 
 /** Ortak, her karede yeniden üretilmeyen metin boyacısı. */
 private val gaugeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -150,6 +159,9 @@ internal class GaugeContext(
     val speedValue: Int,
     val speedUnit: String,
     val useMph: Boolean,
+    val useFahrenheit: Boolean = false,
+    val clock24h: Boolean = true,
+    val fuelUnitCode: String = "l100km",
     val shiftOffset: Offset,
     val tripKm: Double,
     val odometerKm: Double,
@@ -1184,7 +1196,7 @@ internal fun DrawScope.drawStatusRail(
     drawTempIcon(tempX, top + railH * 0.36f, iconR * 0.92f, if (t.coolantTempCelsius > 270.0) RL_RED else p.fg.copy(alpha = 0.65f))
     val tempRatio = ((t.coolantTempCelsius - 40.0) / 80.0).toFloat().coerceIn(0f, 1f)
     drawLinearBar(tempX + iconR * 1.7f, top + railH * 0.28f, barW, barH, tempRatio, if (t.coolantTempCelsius > 270) RL_RED else p.fg, p.track, 0.82f, RL_RED, barH * 0.45f)
-    gText("TEMP ${t.coolantTempCelsius.roundToInt()}°C", tempX + iconR * 1.7f, yBot, small, p.muted, Paint.Align.LEFT, family, true)
+    gText("TEMP ${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", tempX + iconR * 1.7f, yBot, small, p.muted, Paint.Align.LEFT, family, true)
 
     // 4. GNSS Uydu bloğu
     drawDivider(ctx.w * 0.462f)
@@ -1233,15 +1245,28 @@ internal enum class RailStyle { TFT, LCD, CLASSIC }
 /** OEM kadran saati: dakikada bir güncellenir, her karede tarih biçimlendirmez. */
 private var clusterClockMinute: Long = -1L
 private var clusterClockValue: String = "00:00"
+private var clusterClock24h: Boolean = true
 
-internal fun clusterClockText(): String {
+internal fun clusterClockText(clock24h: Boolean = true): String {
     val minute = System.currentTimeMillis() / 60_000L
-    if (minute != clusterClockMinute) {
+    if (minute != clusterClockMinute || clock24h != clusterClock24h) {
         clusterClockMinute = minute
-        clusterClockValue = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+        clusterClock24h = clock24h
+        val pattern = if (clock24h) "HH:mm" else "h:mm a"
+        clusterClockValue = java.text.SimpleDateFormat(pattern, java.util.Locale.US)
             .format(java.util.Date(minute * 60_000L))
     }
     return clusterClockValue
+}
+
+/** Yakıt tüketimi birimi: "l100km" | "kml" | "mpg". Girdi L/100km'dir. */
+internal fun formatFuelConsumption(lPer100Km: Double, unitCode: String): String {
+    val safe = if (lPer100Km > 0.0) lPer100Km else 4.8
+    return when (unitCode.lowercase()) {
+        "kml" -> String.format(java.util.Locale.US, "%.1f km/L", 100.0 / safe)
+        "mpg" -> String.format(java.util.Locale.US, "%.1f mpg", 235.214583 / safe)
+        else -> String.format(java.util.Locale.US, "%.1f L/100", safe)
+    }
 }
 
 internal fun formatKm(value: Double): String {
@@ -1457,6 +1482,6 @@ internal fun DrawScope.drawTemperatureAndFuel(
     gText("C", x - ctx.u * 1.2f, y + gap + h * 0.9f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
     gText("H", x + width + ctx.u * 0.5f, y + gap + h * 0.9f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
     if (!compact) {
-        gText("${t.coolantTempCelsius.roundToInt()}°C", x + width * 0.5f, y + gap + h + ctx.u * 2.1f, ctx.u * 1.7f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", x + width * 0.5f, y + gap + h + ctx.u * 2.1f, ctx.u * 1.7f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
     }
 }

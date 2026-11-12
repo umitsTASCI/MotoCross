@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -77,6 +78,7 @@ import com.oemcluster.pro.renderer.OemClusterCanvasRenderer
 import com.oemcluster.pro.runtime.DistanceFormatter
 import com.oemcluster.pro.runtime.RideSessionState
 import com.oemcluster.pro.runtime.RideSessionStateHolder
+import com.oemcluster.pro.runtime.ShiftBeeper
 import com.oemcluster.pro.runtime.SimulationController
 import com.oemcluster.pro.sensors.AndroidHardwareSensorManager
 import com.oemcluster.pro.sensors.NativeTelemetryEngineBridge
@@ -113,8 +115,11 @@ class MainActivity : ComponentActivity() {
         val startupPrefs = AppPreferencesRepository.state.value
         LocalizationManager.setLanguage(AppLanguage.fromCode(startupPrefs.languageCode))
 
-        // Motosiklet sürüşünde ekran kapanmasın; panel 120 Hz'e kilitlenir.
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Motosiklet sürüşünde ekran kapanmasın (ayarlardan kapatılabilir); panel 120 Hz'e kilitlenir.
+        if (startupPrefs.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (startupPrefs.forceMaxBrightness) {
+            window.attributes = window.attributes.apply { screenBrightness = 1.0f }
+        }
         request120HzRefreshRate()
         hideSystemUi()
 
@@ -132,7 +137,9 @@ class MainActivity : ComponentActivity() {
             manualStage2Rpm = startupPrefs.manualStage2Rpm.toDouble(),
             humanReactionTimeSec = (startupPrefs.reactionTimeMs / 1000f).toDouble()
         )
-        NativeTelemetryEngineBridge.nativeTriggerIgnitionSweep(System.nanoTime())
+        if (startupPrefs.ignitionSweepEnabled) {
+            NativeTelemetryEngineBridge.nativeTriggerIgnitionSweep(System.nanoTime())
+        }
 
         requestSensorPermissionsIfNeeded()
         hardwareSensorManager.startImuAndLightSensors()
@@ -164,6 +171,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        ShiftBeeper.release()
+        if (::hardwareSensorManager.isInitialized) hardwareSensorManager.stopAllSensors()
+        super.onDestroy()
+    }
+
     override fun onPause() {
         RideSessionStateHolder.current?.pushToPrefs()
         AppPreferencesRepository.flush()
@@ -179,11 +192,6 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) hideSystemUi()
-    }
-
-    override fun onDestroy() {
-        hardwareSensorManager.stopAllSensors()
-        super.onDestroy()
     }
 
     private fun requestSensorPermissionsIfNeeded() {
@@ -272,7 +280,9 @@ fun MotoCrossClusterApp(
         AppPreferencesRepository.update {
             it.copy(selectedGaugeIndex = next, selectedSubModeIndex = 0)
         }
-        NativeTelemetryEngineBridge.nativeTriggerIgnitionSweep(System.nanoTime())
+        if (AppPreferencesRepository.state.value.ignitionSweepEnabled) {
+            NativeTelemetryEngineBridge.nativeTriggerIgnitionSweep(System.nanoTime())
+        }
         val nextSpec = OemGaugeCatalog.allModels[next]
         showToast("#%02d  %s %s".format(nextSpec.modelNumber, nextSpec.brand, nextSpec.modelName))
     }
@@ -293,9 +303,21 @@ fun MotoCrossClusterApp(
         }
     }
 
-    // Dil, tema ve mikrofon ayarlarını çalışma zamanına uygula.
+    // Dil, tema, mikrofon ve ekran davranışı ayarlarını çalışma zamanına uygula.
+    val context = LocalContext.current
     LaunchedEffect(prefs.languageCode) {
         LocalizationManager.setLanguage(AppLanguage.fromCode(prefs.languageCode))
+    }
+    LaunchedEffect(prefs.keepScreenOn) {
+        val w = (context as? ComponentActivity)?.window ?: return@LaunchedEffect
+        if (prefs.keepScreenOn) w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+    LaunchedEffect(prefs.forceMaxBrightness) {
+        val w = (context as? ComponentActivity)?.window ?: return@LaunchedEffect
+        w.attributes = w.attributes.apply {
+            screenBrightness = if (prefs.forceMaxBrightness) 1.0f else -1f
+        }
     }
     LaunchedEffect(prefs.themeOverrideMode) {
         onThemeModeChanged(prefs.themeOverrideMode)
@@ -334,6 +356,7 @@ fun MotoCrossClusterApp(
         var saveAccum = 0.0
         var revisionAccum = 0.0
         var settingsSaveAccum = 0.0
+        var lastShiftState = ShiftLightState.NORMAL
 
         while (true) {
             withFrameNanos { frameNanos ->
@@ -366,6 +389,15 @@ fun MotoCrossClusterApp(
                     }
 
                     session.update(tickDt, NativeTelemetryEngineBridge.telemetryState.value)
+
+                    // Shift Stage 2 / kesici için kask interkomu bip'i (ayarlardan)
+                    val shiftStateNow = NativeTelemetryEngineBridge.telemetryState.value.shiftLightState
+                    if (shiftStateNow != lastShiftState) {
+                        if (AppPreferencesRepository.state.value.shiftBeepEnabled) {
+                            ShiftBeeper.onShiftState(shiftStateNow, lastShiftState)
+                        }
+                        lastShiftState = shiftStateNow
+                    }
                 }
 
                 saveAccum += frameDt
@@ -447,7 +479,8 @@ fun MotoCrossClusterApp(
                 onRestoreBike = { id -> BikeDatabaseRepository.restoreFactoryPreset(id) },
                 onResetGarage = { BikeDatabaseRepository.resetGarageToFactory() },
                 onZeroCalibrateNow = onZeroCalibrateNow,
-                onReplayLaunch = { launchVisible = true }
+                onReplayLaunch = { launchVisible = true },
+                onResetOdometer = { session.resetOdometer() }
             )
         } else {
             LiveClusterHost(
@@ -549,6 +582,9 @@ private fun LiveClusterHost(
             rpmScalingMode = prefs.rpmScalingMode,
             wheelieDisplayMode = prefs.wheelieDisplayMode,
             useMph = prefs.useMph,
+            useFahrenheit = prefs.useFahrenheit,
+            clock24h = prefs.clock24h,
+            fuelUnitCode = prefs.fuelUnitCode,
             chromaKeyGreenScreen = prefs.chromaKeyGreen,
             oledPixelShiftOffset = pixelShiftOffset,
             language = language,
@@ -719,7 +755,7 @@ private fun publishSimulationTelemetry(
 ) {
     val speedKmh = sim.speedKmh.toDouble()
     val trueSpdMs = speedKmh / 3.6
-    val gear = sim.gear.coerceIn(0, 6)
+    val gear = sim.gear.coerceIn(0, 8)
     val clutch = sim.clutchIn
     val isNeutral = gear == 0
     val isMoving = speedKmh > 1.0

@@ -45,6 +45,17 @@ data class ClusterPreferences(
     val chromaKeyGreen: Boolean = false,
     val oledPixelShiftEnabled: Boolean = true,
 
+    // Birimler
+    val useFahrenheit: Boolean = false,
+    val clock24h: Boolean = true,
+    val fuelUnitCode: String = "l100km",
+
+    // Ekran davranışı ve sesli vites uyarısı
+    val keepScreenOn: Boolean = true,          // Motosiklet sürüşünde ekran asla kapanmaz
+    val forceMaxBrightness: Boolean = false,   // Güneş altında tam parlaklık
+    val ignitionSweepEnabled: Boolean = true,  // Kontak açılış taraması (0→redline→0)
+    val shiftBeepEnabled: Boolean = false,     // Shift Stage 2'de kask interkom bip'i
+
     // Shift-light / ECU
     val autoOptimalShift: Boolean = true,
     val manualStage1Rpm: Float = 8800f,

@@ -73,7 +73,7 @@ internal fun DrawScope.drawCentralAnalogHybrid(ctx: GaugeContext) {
     } else {
         val cx = ctx.w * 0.50f
         val cy = ctx.h * 0.34f
-        val r = min(ctx.w * 0.40f, ctx.h * 0.23f)
+        val r = min(ctx.w * 0.40f, ctx.h * 0.23f) * (1f + skinJitter(ctx.spec.skinId, 34) * 0.08f)
         drawNeedleDial(cx, cy, r, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
         gText("x1000 r/min", cx, cy + r * 0.58f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
         drawSpeedHubLcd(ctx, ctx.w * 0.08f, ctx.h * 0.53f, ctx.w * 0.84f, ctx.h * 0.24f, railH)
@@ -110,7 +110,7 @@ private fun DrawScope.drawSpeedHubLcd(
     val statsTop = top + height * 0.74f
     gText("${(t.fuelLevelRatio * 100).roundToInt()}%", left + width * 0.22f, statsTop, ctx.u * 1.55f, p.fg, Paint.Align.CENTER, ctx.type.label, true)
     gText("FUEL", left + width * 0.22f, statsTop + ctx.u * 1.75f, ctx.u * 1.05f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
-    gText("${t.coolantTempCelsius.roundToInt()}°", left + width * 0.50f, statsTop, ctx.u * 1.55f, p.fg, Paint.Align.CENTER, ctx.type.label, true)
+    gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", left + width * 0.50f, statsTop, ctx.u * 1.55f, p.fg, Paint.Align.CENTER, ctx.type.label, true)
     gText("TEMP", left + width * 0.50f, statsTop + ctx.u * 1.75f, ctx.u * 1.05f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
     gText("${t.gpsSatelliteCount}", left + width * 0.78f, statsTop, ctx.u * 1.55f, p.accent, Paint.Align.CENTER, ctx.type.label, true)
     gText("SAT", left + width * 0.78f, statsTop + ctx.u * 1.75f, ctx.u * 1.05f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
@@ -210,7 +210,7 @@ private fun DrawScope.drawTempDial(ctx: GaugeContext, cx: Float, cy: Float, r: F
     drawArcSegment(cx, cy, r - ctx.u * 2.0f, 150f, 240f * ratio.coerceIn(0f, 1f), ctx.u * 1.6f, if (tempC > 105) RL_RED else p.fg)
     gText("C", cx - r * 0.52f, cy + r * 0.45f, ctx.u * 1.8f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
     gText("H", cx + r * 0.52f, cy + r * 0.45f, ctx.u * 1.8f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
-    gText("${tempC.roundToInt()}°", cx, cy + r * 0.18f, ctx.u * 2.2f, p.fg, Paint.Align.CENTER, ctx.type.digits, true)
+    gText("${formatTemp(tempC, ctx.useFahrenheit)}", cx, cy + r * 0.18f, ctx.u * 2.2f, p.fg, Paint.Align.CENTER, ctx.type.digits, true)
     gText("TEMP", cx, cy + r * 0.72f, ctx.u * 1.05f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.10f)
 }
 
@@ -364,7 +364,7 @@ internal fun DrawScope.drawSinglePuck(ctx: GaugeContext) {
         gText("FUEL", left + ctx.u * 3.0f, ctx.h * 0.475f, ctx.u * 1.3f, p.muted, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.14f)
         gText("${(t.fuelLevelRatio * 100).roundToInt()}%", left + width - ctx.u * 3.0f, ctx.h * 0.49f, ctx.u * 2.8f, p.fg, Paint.Align.RIGHT, ctx.type.digits, true)
         drawLinearBar(left + ctx.u * 3.0f, ctx.h * 0.50f, width - ctx.u * 6.0f, ctx.u * 1.2f, t.fuelLevelRatio, p.accent, p.track, 0.9f, RL_RED, ctx.u * 0.6f)
-        gText("${t.coolantTempCelsius.roundToInt()}°C   ${t.gpsSatelliteCount} SAT", left + ctx.u * 3.0f, ctx.h * 0.575f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}   ${t.gpsSatelliteCount} SAT", left + ctx.u * 3.0f, ctx.h * 0.575f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
 
         drawPanel(left, ctx.h * 0.64f, width, ctx.h * 0.21f, p, accentEdge = true)
         gText("ODO  ${ctx.formatOdometer()}", left + ctx.u * 3.0f, ctx.h * 0.695f, ctx.u * 2.2f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)

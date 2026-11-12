@@ -205,6 +205,12 @@ class RideSessionState {
         pushToPrefs()
     }
 
+    /** Kalıcı kilometre sayacını sıfırlar (garaj sıfırlamasından bağımsız). */
+    fun resetOdometer() {
+        odometerKm = 0.0
+        pushToPrefs()
+    }
+
     fun resetPeaks() {
         peakSpeedKmh = 0.0
         peakRpm = 0.0

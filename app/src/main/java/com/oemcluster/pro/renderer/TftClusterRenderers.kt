@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import com.oemcluster.pro.catalog.DeclarativeGaugeSpec
+import com.oemcluster.pro.runtime.DistanceFormatter
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -56,11 +57,13 @@ internal fun DrawScope.drawBoomerangTft(ctx: GaugeContext) {
     }
     val points = rememberBoomerangCurve(rawAnchors[0], rawAnchors[1], rawAnchors[2])
 
+    val bandWidth = ctx.u * (if (variant == 2) 4.1f else 3.7f) * (1f + skinJitter(ctx.spec.skinId, 11) * 0.14f)
+
     drawPolylineBar(
         points = points,
         segments = 48,
         filled = ctx.rpmRatio,
-        width = ctx.u * if (variant == 2) 4.1f else 3.7f,
+        width = bandWidth,
         color = if (t.shiftLightState == com.oemcluster.pro.domain.ShiftLightState.NORMAL) p.accent else p.stage1,
         track = p.track,
         redlineRatio = ctx.redlineRatio,
@@ -126,7 +129,7 @@ internal fun DrawScope.drawBoomerangTft(ctx: GaugeContext) {
         drawLinearBar(bx - ctx.u * 3.2f, by, ctx.u * 1.5f, bh, ((t.coolantTempCelsius - 40) / 80).toFloat().coerceIn(0f, 1f), p.fg, p.track, 0.82f, RL_RED, ctx.u * 0.7f, vertical = true)
         gText("F", bx + ctx.u * 0.75f, by - ctx.u * 1.2f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
         gText("E", bx + ctx.u * 0.75f, by + bh + ctx.u * 2.8f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
-        gText("${t.coolantTempCelsius.roundToInt()}°", bx - ctx.u * 2.45f, by + bh + ctx.u * 2.8f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", bx - ctx.u * 2.45f, by + bh + ctx.u * 2.8f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
         drawBrandMark(ctx.spec, p, ctx.w * 0.88f, ctx.h * 0.43f, ctx.u * 5.0f, ctx.u, p.accent.copy(alpha = 0.55f))
         gText(ctx.spec.modelName.substringBefore(" (").uppercase(), ctx.w * 0.90f, ctx.h * 0.50f, ctx.u * 1.3f, p.muted, Paint.Align.RIGHT, ctx.type.label, false)
     } else {
@@ -159,11 +162,13 @@ internal fun DrawScope.drawCurvedSweepTft(ctx: GaugeContext) {
 
     drawShiftLeds(ctx.spec, t, p, ctx.w * 0.5f, ctx.u * 4.4f, ctx.w * 0.30f, ctx.u)
 
-    val cx = if (ctx.wide) ctx.w * 0.50f else ctx.w * 0.50f
-    val cy = if (ctx.wide) ctx.h * 0.60f else ctx.h * 0.57f
-    val radius = if (ctx.wide) min(ctx.w * 0.38f, ctx.h * 0.48f) else min(ctx.w * 0.45f, ctx.h * 0.34f)
-    val start = if (variant == 1) 196f else 202f
-    val sweep = if (variant == 1) 148f else 136f
+    val jit = skinJitter(ctx.spec.skinId, 21)
+    val cx = ctx.w * 0.50f
+    val cy = if (ctx.wide) ctx.h * (0.60f + jit * 0.02f) else ctx.h * 0.57f
+    val radiusBase = if (ctx.wide) min(ctx.w * 0.38f, ctx.h * 0.48f) else min(ctx.w * 0.45f, ctx.h * 0.34f)
+    val radius = radiusBase * (1f + jit * 0.09f)
+    val start = if (variant == 1) 196f else 202f + jit * 3.0f
+    val sweep = if (variant == 1) 148f else 136f + jit * 4.0f
 
     drawSegmentedArc(
         cx, cy, radius, start, sweep, 52, ctx.rpmRatio, ctx.u * 4.4f,
@@ -348,7 +353,7 @@ private fun DrawScope.drawSideStats(ctx: GaugeContext, railH: Float) {
     val rightTextX = ctx.w - ctx.w * 0.042f
     drawPanel(rightPanelLeft, top, w, h, p)
     gText("COOLANT", rightTextX, top + h * 0.25f, ctx.u * 1.35f, p.muted, Paint.Align.RIGHT, ctx.type.label, true, spacing = 0.10f)
-    gText("${t.coolantTempCelsius.roundToInt()}°C", rightTextX, top + h * 0.64f, ctx.u * 3.0f, if (t.coolantTempCelsius > 105) RL_RED else p.fg, Paint.Align.RIGHT, ctx.type.digits, true)
+    gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", rightTextX, top + h * 0.64f, ctx.u * 3.0f, if (t.coolantTempCelsius > 105) RL_RED else p.fg, Paint.Align.RIGHT, ctx.type.digits, true)
     gText(if (t.tractionControlInterventionActive) "TC ACTIVE" else "TC READY", rightTextX, top + h * 0.88f, ctx.u * 1.30f, p.accent, Paint.Align.RIGHT, ctx.type.label, true)
 
     // Sol alt OEM ODO / TRIP / SEANS kartı
@@ -387,7 +392,7 @@ private fun DrawScope.drawBondedTachEvo(ctx: GaugeContext) {
     val barColor = shiftBarColor(ctx, p.fg)
 
     // Saat — gerçek KTM Bonded TFT'de sol üstte.
-    gText(clusterClockText(), ctx.w * 0.045f, ctx.h * 0.088f, ctx.u * 4.2f, p.fg,
+    gText(clusterClockText(ctx.clock24h), ctx.w * 0.045f, ctx.h * 0.088f, ctx.u * 4.2f, p.fg,
         Paint.Align.LEFT, ctx.type.digits, true)
     gText(ctx.spec.modelName.substringBefore(" (").uppercase(), ctx.w * 0.48f, ctx.h * 0.068f, ctx.u * 1.55f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.18f)
@@ -452,6 +457,30 @@ private fun DrawScope.drawBondedTachEvo(ctx: GaugeContext) {
     gText("GEAR", ctx.w * 0.905f, ctx.h * 0.312f, ctx.u * 1.55f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.22f)
 
+    // ABS ROAD + MTC hapları — gerçek kadranda hızın hemen altında yanyana iki gri hap.
+    val pillH = ctx.u * 6.4f
+    val pillW = ctx.u * 17.5f
+    val pillY = ctx.h * 0.770f
+    val pillPad = ctx.u * 1.1f
+    val absX = ctx.w * 0.435f
+    val mtcX = absX + pillW + ctx.u * 2.2f
+    listOf(absX to "ROAD", mtcX to "OFF").forEach { (x, state) ->
+        drawRoundRect(
+            color = p.fg.copy(alpha = 0.10f),
+            topLeft = Offset(x, pillY),
+            size = Size(pillW, pillH),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(pillH * 0.22f, pillH * 0.22f)
+        )
+    }
+    gText("ABS", absX + pillPad * 1.6f, pillY + pillH * 0.68f, ctx.u * 2.6f, p.fg,
+        Paint.Align.LEFT, ctx.type.label, true, spacing = 0.04f)
+    gText("ROAD", absX + pillW - pillPad * 1.6f, pillY + pillH * 0.68f, ctx.u * 2.0f, p.muted,
+        Paint.Align.RIGHT, ctx.type.label, true, spacing = 0.08f)
+    gText("MTC", mtcX + pillPad * 1.6f, pillY + pillH * 0.68f, ctx.u * 2.6f, p.fg,
+        Paint.Align.LEFT, ctx.type.label, true, spacing = 0.04f)
+    gText("OFF", mtcX + pillW - pillPad * 1.6f, pillY + pillH * 0.68f, ctx.u * 2.0f, p.muted,
+        Paint.Align.RIGHT, ctx.type.label, true, spacing = 0.08f)
+
     // Hız — C kavisinin içinde, birim rakamın sağında
     drawSpeed(
         ctx.speedValue, ctx.speedUnit,
@@ -459,12 +488,12 @@ private fun DrawScope.drawBondedTachEvo(ctx: GaugeContext) {
         p.fg, p.muted, ctx.type.digits
     )
 
-    // Menzil — gerçek KTM'de sol alt blok
-    val rangeKm = (t.fuelLevelRatio * 380f).roundToInt()
+    // Menzil — gerçek KTM'de sol alt blok (MPH modunda birim dönüştürülür)
+    val rangeValue = DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()
     gText("RANGE", ctx.w * 0.045f, ctx.h * 0.655f, ctx.u * 1.50f, p.muted,
         Paint.Align.LEFT, ctx.type.label, true, spacing = 0.16f)
     drawSpeed(
-        rangeKm, if (ctx.useMph) "mi" else "km",
+        rangeValue, DistanceFormatter.unit(ctx.useMph),
         ctx.w * 0.045f, ctx.h * 0.730f, ctx.u * 4.1f,
         p.fg, p.muted, ctx.type.digits, Paint.Align.LEFT
     )
@@ -498,7 +527,7 @@ private fun DrawScope.drawHorizontalEvo(ctx: GaugeContext) {
         ctx.w * 0.105f, ctx.h * 0.068f, ctx.u * 1.85f, p.muted,
         Paint.Align.LEFT, ctx.type.label, true, spacing = 0.08f
     )
-    gText(clusterClockText(), ctx.w * 0.955f, ctx.h * 0.072f, ctx.u * 3.0f, p.fg,
+    gText(clusterClockText(ctx.clock24h), ctx.w * 0.955f, ctx.h * 0.072f, ctx.u * 3.0f, p.fg,
         Paint.Align.RIGHT, ctx.type.digits, true)
 
     drawShiftLeds(ctx.spec, t, p, ctx.w * 0.5f, ctx.h * 0.112f, ctx.w * 0.28f, ctx.u)
@@ -582,8 +611,8 @@ private fun DrawScope.drawHorizontalEvo(ctx: GaugeContext) {
         ctx.w * 0.470f, ctx.h * 0.668f, ctx.u * 31.0f,
         p.fg, p.muted, ctx.type.digits
     )
-    val rangeKm = (t.fuelLevelRatio * 380f).roundToInt()
-    gText("RANGE $rangeKm km", ctx.w * 0.470f, ctx.h * 0.748f, ctx.u * 2.0f, p.accent,
+    val rangeText = "${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}"
+    gText("RANGE $rangeText", ctx.w * 0.470f, ctx.h * 0.748f, ctx.u * 2.0f, p.accent,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.10f)
 
     // Vites — gerçek Panigale track ekranında kutusuz dev rakam.
@@ -613,7 +642,7 @@ private fun DrawScope.drawCompactEvo(ctx: GaugeContext) {
     val t = ctx.telemetry
     val barColor = shiftBarColor(ctx)
 
-    gText(clusterClockText(), ctx.w * 0.06f, ctx.h * 0.075f, ctx.u * 4.2f, p.fg,
+    gText(clusterClockText(ctx.clock24h), ctx.w * 0.06f, ctx.h * 0.075f, ctx.u * 4.2f, p.fg,
         Paint.Align.LEFT, ctx.type.digits, true)
     drawBrandMark(ctx.spec, p, ctx.w * 0.80f, ctx.h * 0.062f, ctx.u * 4.4f, ctx.u, p.accent)
 
@@ -651,10 +680,10 @@ private fun DrawScope.drawCompactEvo(ctx: GaugeContext) {
     gText("GEAR", ctx.w * 0.5f, ctx.h * 0.675f, ctx.u * 1.5f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.20f)
 
-    val rangeKm = (t.fuelLevelRatio * 380f).roundToInt()
-    gText("RANGE $rangeKm km   •   ${ctx.subMode.uppercase()}", ctx.w * 0.5f, ctx.h * 0.735f,
+    val rangeText = "${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}"
+    gText("RANGE $rangeText   •   ${ctx.subMode.uppercase()}", ctx.w * 0.5f, ctx.h * 0.735f,
         ctx.u * 1.8f, p.accent, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.08f)
-    gText("FUEL ${(t.fuelLevelRatio * 100).roundToInt()}%   •   ${t.coolantTempCelsius.roundToInt()}°C",
+    gText("FUEL ${(t.fuelLevelRatio * 100).roundToInt()}%   •   ${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}",
         ctx.w * 0.5f, ctx.h * 0.775f, ctx.u * 1.6f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true)
 }
@@ -780,7 +809,7 @@ internal fun DrawScope.drawSymmetricPincer(ctx: GaugeContext) {
         drawPanel(ctx.w * 0.775f, ctx.h * 0.42f, ctx.w * 0.19f, ctx.h * 0.22f, p)
         gText("FUEL", ctx.w * 0.795f, ctx.h * 0.465f, ctx.u * 1.6f, p.muted, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.14f)
         drawLinearBar(ctx.w * 0.795f, ctx.h * 0.50f, ctx.w * 0.145f, ctx.u * 1.3f, t.fuelLevelRatio, p.accent, p.track, 0.9f, RL_RED, ctx.u * 0.6f)
-        gText("${t.coolantTempCelsius.roundToInt()}°C  •  ${t.gpsSatelliteCount} SAT", ctx.w * 0.795f, ctx.h * 0.58f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}  •  ${t.gpsSatelliteCount} SAT", ctx.w * 0.795f, ctx.h * 0.58f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
         gText(if (t.tractionControlInterventionActive) "TC ACTIVE" else "TC READY", ctx.w * 0.795f, ctx.h * 0.62f, ctx.u * 1.35f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
         drawBrandMark(ctx.spec, p, ctx.w * 0.50f, ctx.h * 0.10f, ctx.u * 4.8f, ctx.u, p.accent.copy(alpha = 0.7f))
     } else {
@@ -996,8 +1025,8 @@ internal fun DrawScope.drawRallyTower(ctx: GaugeContext) {
         gText("${(t.fuelLevelRatio * 100).roundToInt()}%", leftPanelX + panelW * 0.12f, ctx.h * 0.30f, ctx.u * 4.0f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
         drawLinearBar(leftPanelX + panelW * 0.12f, ctx.h * 0.32f, panelW * 0.70f, ctx.u * 1.2f, t.fuelLevelRatio, p.accent, p.track, 0.9f, RL_RED, ctx.u * 0.6f)
         gText("RANGE", leftPanelX + panelW * 0.12f, ctx.h * 0.39f, ctx.u * 1.4f, p.muted, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.12f)
-        gText("${(t.fuelLevelRatio * 380).roundToInt()} km", leftPanelX + panelW * 0.12f, ctx.h * 0.45f, ctx.u * 3.1f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
-        gText("${t.coolantTempCelsius.roundToInt()}°C", leftPanelX + panelW * 0.12f, ctx.h * 0.52f, ctx.u * 2.6f, p.accent, Paint.Align.LEFT, ctx.type.digits, true)
+        gText("${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}", leftPanelX + panelW * 0.12f, ctx.h * 0.45f, ctx.u * 3.1f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", leftPanelX + panelW * 0.12f, ctx.h * 0.52f, ctx.u * 2.6f, p.accent, Paint.Align.LEFT, ctx.type.digits, true)
         gText("${t.gpsSatelliteCount} SAT  •  ${t.gpsHorizontalAccuracyM.roundToInt()} m", leftPanelX + panelW * 0.12f, ctx.h * 0.57f, ctx.u * 1.3f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
 
         // Sağ panel: trip / yol kitabı
@@ -1055,7 +1084,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
         drawRect(p.fg.copy(alpha = 0.04f), Offset(0f, ctx.h * 0.095f), Size(ctx.w, ctx.h * 0.055f))
         gText("MODE  ${ctx.subMode.uppercase()}", ctx.w * 0.035f, ctx.h * 0.132f, ctx.u * 1.75f, p.accent, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.10f)
         gText(if (adventure) "OFF-ROAD READY" else if (scooter) "URBAN ECO" else "TOURING", ctx.w * 0.50f, ctx.h * 0.132f, ctx.u * 1.6f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.14f)
-        gText("${t.coolantTempCelsius.roundToInt()}°C   ${(t.fuelLevelRatio * 100).roundToInt()}%   ${t.gpsSatelliteCount} SAT", ctx.w * 0.965f, ctx.h * 0.132f, ctx.u * 1.55f, p.fg, Paint.Align.RIGHT, ctx.type.label, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}   ${(t.fuelLevelRatio * 100).roundToInt()}%   ${t.gpsSatelliteCount} SAT", ctx.w * 0.965f, ctx.h * 0.132f, ctx.u * 1.55f, p.fg, Paint.Align.RIGHT, ctx.type.label, true)
 
         val top = ctx.h * 0.19f
         val bottom = ctx.h * 0.88f
@@ -1082,7 +1111,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
         }
         drawPath(route, p.accent, style = Stroke(width = ctx.u * 0.9f, cap = StrokeCap.Round))
         drawCircle(p.accent, ctx.u * 1.0f, Offset(ctx.w * 0.235f, mapTop + mapH * 0.10f))
-        gText("${if (adventure) "TET SECTOR 4" else if (scooter) "4.1 L/100" else "ALPS ROUTE"}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 3.0f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
+        gText("${if (adventure) "TET SECTOR 4" else if (scooter) formatFuelConsumption(4.1, ctx.fuelUnitCode) else "ALPS ROUTE"}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 3.0f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
         gText("ODO  ${ctx.formatOdometer()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 6.0f, ctx.u * 1.85f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
         gText("TRIP A  ${ctx.formatTrip()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 8.8f, ctx.u * 1.65f, p.accent, Paint.Align.LEFT, ctx.type.label, true)
         gText("SEANS  ${ctx.formatSession()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 11.4f, ctx.u * 1.50f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
@@ -1121,7 +1150,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
         gText("TRIP ${ctx.formatTrip()}", ctx.w * 0.09f, ctx.h * 0.755f, ctx.u * 1.9f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
         gText("ODO ${ctx.formatOdometer()}", ctx.w * 0.09f, ctx.h * 0.795f, ctx.u * 1.6f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
         drawPanel(ctx.w * 0.54f, ctx.h * 0.71f, ctx.w * 0.40f, ctx.h * 0.13f, p)
-        gText("${t.coolantTempCelsius.roundToInt()}°C  •  LEAN ${abs(t.leanAngleDeg).roundToInt()}°", ctx.w * 0.57f, ctx.h * 0.755f, ctx.u * 1.8f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
+        gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}  •  LEAN ${abs(t.leanAngleDeg).roundToInt()}°", ctx.w * 0.57f, ctx.h * 0.755f, ctx.u * 1.8f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
         gText("TC ${if (t.tractionControlInterventionActive) "ACT" else "STBY"}  ABS ${if (t.absInterventionActive) "ACT" else "STBY"}", ctx.w * 0.57f, ctx.h * 0.795f, ctx.u * 1.5f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
         drawBrandMark(ctx.spec, p, ctx.w * 0.86f, ctx.h * 0.90f, ctx.u * 4.0f, ctx.u, p.accent.copy(alpha = 0.5f))
     }
@@ -1131,7 +1160,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
 /* =====================================================================================
  *  Polyline & Bumerang Bar Yardımcıları (Yuvarlak inci izi olmadan keskin OEM segmentler)
  * ===================================================================================== */
-private fun rememberBoomerangCurve(
+internal fun rememberBoomerangCurve(
     p0: Offset,
     knee: Offset,
     p2: Offset
@@ -1161,7 +1190,7 @@ private fun rememberBoomerangCurve(
     return result
 }
 
-private fun DrawScope.drawPolylineBar(
+internal fun DrawScope.drawPolylineBar(
     points: List<Offset>,
     segments: Int,
     filled: Float,

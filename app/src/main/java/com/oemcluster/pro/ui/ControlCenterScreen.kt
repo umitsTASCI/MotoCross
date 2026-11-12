@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -109,7 +110,8 @@ fun ControlCenterScreen(
     onRestoreBike: (String) -> Unit,
     onResetGarage: () -> Unit,
     onZeroCalibrateNow: () -> Unit,
-    onReplayLaunch: () -> Unit
+    onReplayLaunch: () -> Unit,
+    onResetOdometer: () -> Unit
 ) {
     var tab by remember { mutableIntStateOf(initialTab.coerceIn(0, 4)) }
     val currentSpec = OemGaugeCatalog.allModels[
@@ -165,7 +167,8 @@ fun ControlCenterScreen(
                     language = language,
                     onZeroCalibrateNow = onZeroCalibrateNow,
                     onResetGarage = onResetGarage,
-                    onReplayLaunch = onReplayLaunch
+                    onReplayLaunch = onReplayLaunch,
+                    onResetOdometer = onResetOdometer
                 )
                 3 -> RideDataTab(
                     session = session,
@@ -386,7 +389,7 @@ private fun GarageTab(
     var rearTeethText by remember(editing, editSession) { mutableStateOf(editing.rearSprocketTeeth.toString()) }
     var primaryText by remember(editing, editSession) { mutableStateOf(String.format(Locale.US, "%.3f", editing.primaryReductionRatio)) }
     var gearCount by remember(editing, editSession) {
-        mutableIntStateOf(editing.transmissionGearCount.coerceIn(4, 6))
+        mutableIntStateOf(editing.transmissionGearCount.coerceIn(4, 8))
     }
     var transmissionTypeIndex by remember(editing, editSession) {
         mutableIntStateOf(TransmissionType.entries.indexOf(editing.transmissionType).coerceAtLeast(0))
@@ -780,8 +783,8 @@ private fun GarageTab(
                 ) {
                     CcChoiceRow(
                         title = "Vites sayısı",
-                        options = listOf("4", "5", "6"),
-                        selectedIndex = (gearCount - 4).coerceIn(0, 2),
+                        options = listOf("4", "5", "6", "7", "8"),
+                        selectedIndex = (gearCount - 4).coerceIn(0, 4),
                         onSelect = { idx -> gearCount = idx + 4 }
                     )
                     Spacer(Modifier.height(8.dp))
@@ -868,14 +871,14 @@ private fun GarageTab(
                     }
                     Spacer(Modifier.height(9.dp))
                     Text(
-                        text = "VİTES ORANLARI (1 → ${gearCount.coerceIn(4, 6)})",
+                        text = "VİTES ORANLARI (1 → ${gearCount.coerceIn(4, 8)})",
                         color = CcColors.muted,
                         fontSize = 9.sp,
                         letterSpacing = 0.5.sp
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        for (i in 0 until gearCount.coerceIn(4, 6)) {
+                        for (i in 0 until gearCount.coerceIn(4, 8)) {
                             GarageField(
                                 "${i + 1}. VİTES",
                                 gearTexts.getOrElse(i) { "1.000" },
@@ -1239,9 +1242,12 @@ private fun SettingsTab(
     language: AppLanguage,
     onZeroCalibrateNow: () -> Unit,
     onResetGarage: () -> Unit,
-    onReplayLaunch: () -> Unit
+    onReplayLaunch: () -> Unit,
+    onResetOdometer: () -> Unit
 ) {
     var confirmGarageReset by remember { mutableStateOf(false) }
+    var confirmOdometerReset by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1249,36 +1255,107 @@ private fun SettingsTab(
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         // --- Özet şeridi: aktif motor, GNSS, shift eşikleri, tema ---
-        item {
-            CcPanel(
-                title = "⚡  CANLI DURUM",
-                subtitle = "Aktif motor, GNSS ve shift-light özeti"
+        settingsItem(visible = matchesQuery(query, "canli durum live hiz hiz kilometre devir rpm vites gear gnss uydu telemetry")) {
+            SettingsSearchBar(query = query, onQueryChange = { query = it })
+        }
+
+        settingsItem(visible = matchesQuery(query, "canli durum live hiz hiz kilometre devir rpm vites gear gnss uydu telemetry hiz hiz km")) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(CcColors.panel)
+                    .border(1.dp, CcColors.border, RoundedCornerShape(18.dp))
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CcStatTile(
-                        "HIZ", "${telemetry.trueSpeedKmh.roundToInt()}",
-                        if (prefs.useMph) "mph" else "km/h",
-                        CcColors.orange, Modifier.weight(1f)
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color.Transparent, CcColors.orange, Color.Transparent)
+                                )
+                            )
                     )
-                    CcStatTile(
-                        "VİTES", telemetry.gearDisplayString,
-                        if (telemetry.isClutchPulled) "DEBRİYAJ" else "",
-                        CcColors.cyan, Modifier.weight(1f)
-                    )
-                    CcStatTile(
-                        "DEVİR", "${telemetry.actualEngineRpm.roundToInt()}",
-                        "RPM", CcColors.red, Modifier.weight(1f)
-                    )
-                    CcStatTile(
-                        "GNSS", "${telemetry.gpsSatelliteCount}",
-                        "SAT", if (telemetry.gpsSatelliteCount >= 6) CcColors.green else CcColors.gold,
-                        Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(CcColors.green)
+                            )
+                            Spacer(Modifier.width(7.dp))
+                            Text(
+                                "CANLI DURUM",
+                                color = CcColors.muted,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.7.sp
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                if (prefs.useMph) "mph" else "km/h",
+                                color = CcColors.muted,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = String.format(
+                                    Locale.US,
+                                    "%d",
+                                    (telemetry.trueSpeedKmh * if (prefs.useMph) 0.621371 else 1.0).roundToInt()
+                                ),
+                                color = CcColors.text,
+                                fontSize = 46.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                lineHeight = 46.sp
+                            )
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "VİTES",
+                                    color = CcColors.muted,
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.4.sp
+                                )
+                                Text(
+                                    telemetry.gearDisplayString,
+                                    color = CcColors.cyan,
+                                    fontSize = 30.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    lineHeight = 30.sp
+                                )
+                                Text(
+                                    "RPM ${telemetry.actualEngineRpm.roundToInt()}",
+                                    color = CcColors.muted,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    "GÜVEN %${(telemetry.gearConfidence * 100).roundToInt()}",
+                                    color = CcColors.green,
+                                    fontSize = 9.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "dil language idioma langue sprache lingua turkce english espanol italiano francais deutsch portugais russo chinese japones korean korece")) {
             CcPanel(
                 title = "🌍  DİL / LANGUAGE",
                 subtitle = "Arayüz ve gösterge etiketleri anında değişir"
@@ -1298,7 +1375,52 @@ private fun SettingsTab(
             }
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "birim units mph kmh sicaklik temperature fahrenheit celsius f saat clock 12 24 yakit fuel mpg l100 l100km kml")) {
+            CcPanel(
+                title = "📐  BİRİMLER",
+                subtitle = "Hız ve sıcaklık birimleri; gösterge anında güncellenir"
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CcSwitchRow(
+                        title = "MPH hız birimi",
+                        description = "Kadran hızını mil/saat olarak gösterir (0.621371 çarpanı)",
+                        checked = prefs.useMph,
+                        onChange = { v -> onPrefsChange { it.copy(useMph = v) } }
+                    )
+                    CcSwitchRow(
+                        title = "Sıcaklık °F (Fahrenheit)",
+                        description = "Hararet göstergesi ve uyarılar Fahrenheit okunur",
+                        checked = prefs.useFahrenheit,
+                        onChange = { v -> onPrefsChange { it.copy(useFahrenheit = v) } }
+                    )
+                    CcSwitchRow(
+                        title = "24 saat biçimi",
+                        description = "Kapalıyken gösterge saati 12 saat (1:25 PM) biçiminde gösterir",
+                        checked = prefs.clock24h,
+                        onChange = { v -> onPrefsChange { it.copy(clock24h = v) } }
+                    )
+                    CcChoiceRow(
+                        title = "Yakıt tüketimi birimi",
+                        options = listOf("L/100km", "km/L", "MPG"),
+                        selectedIndex = when (prefs.fuelUnitCode) {
+                            "kml" -> 1
+                            "mpg" -> 2
+                            else -> 0
+                        },
+                        onSelect = { idx ->
+                            val code = when (idx) {
+                                1 -> "kml"
+                                2 -> "mpg"
+                                else -> "l100km"
+                            }
+                            onPrefsChange { it.copy(fuelUnitCode = code) }
+                        }
+                    )
+                }
+            }
+        }
+
+        settingsItem(visible = matchesQuery(query, "ekran display tema theme gunduz gece day night oled rpm yatis teker wheelie parlaklik brightness wakelock keepscreenon kontak ignition sweep tarama pivot")) {
             CcPanel(
                 title = "🖥  GÖSTERGE VE EKRAN",
                 subtitle = "Tema, birim, RPM ölçeği ve OLED koruması"
@@ -1309,12 +1431,6 @@ private fun SettingsTab(
                         options = listOf("Otomatik", "Gündüz", "Gece"),
                         selectedIndex = prefs.themeOverrideMode.coerceIn(0, 2),
                         onSelect = { mode -> onPrefsChange { it.copy(themeOverrideMode = mode) } }
-                    )
-                    CcSwitchRow(
-                        title = "MPH hız birimi",
-                        description = "Kadran hızını mil/saat olarak gösterir",
-                        checked = prefs.useMph,
-                        onChange = { v -> onPrefsChange { it.copy(useMph = v) } }
                     )
                     CcSwitchRow(
                         title = "OLED piksel kaydırma",
@@ -1361,11 +1477,29 @@ private fun SettingsTab(
                             }
                         }
                     )
+                    CcSwitchRow(
+                        title = "Ekran her zaman açık (WakeLock)",
+                        description = "Sürüş sırasında ekran kapanmaz; yolun ortasında karanlıkta kalınmaz",
+                        checked = prefs.keepScreenOn,
+                        onChange = { v -> onPrefsChange { it.copy(keepScreenOn = v) } }
+                    )
+                    CcSwitchRow(
+                        title = "Güneş altında maks. parlaklık",
+                        description = "Ekran parlaklığını %100'e sabitler; güneş altında kadranı rahat okutur",
+                        checked = prefs.forceMaxBrightness,
+                        onChange = { v -> onPrefsChange { it.copy(forceMaxBrightness = v) } }
+                    )
+                    CcSwitchRow(
+                        title = "Kontak açılış taraması (0→redline→0)",
+                        description = "Her kontak açılışında ibreler tam tarama yapar; kapatılırsa gösterge doğrudan canlı moda geçer",
+                        checked = prefs.ignitionSweepEnabled,
+                        onChange = { v -> onPrefsChange { it.copy(ignitionSweepEnabled = v) } }
+                    )
                 }
             }
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "shift light gear vites stage stage1 stage2 evre optimal ecu beep bip ses kask interkom reaksiyon otomatik manual")) {
             CcPanel(
                 title = "🚦  SHIFT-LIGHT / SANAL ECU",
                 subtitle = "Vites uyarı eşikleri, reaksiyon süresi ve akustik devir"
@@ -1414,11 +1548,20 @@ private fun SettingsTab(
                         checked = prefs.acousticMicEnabled,
                         onChange = { v -> onPrefsChange { it.copy(acousticMicEnabled = v) } }
                     )
+                    CcSwitchRow(
+                        title = "Stage 2 kask bip'i",
+                        description = "Shift Stage 2'ye veya kesiciye geçildiğinde kaska bip verir; interkom açıkken duyulur",
+                        checked = prefs.shiftBeepEnabled,
+                        onChange = { v -> onPrefsChange { it.copy(shiftBeepEnabled = v) } }
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CcSmallButton("Bip sesini dene", onClick = { com.oemcluster.pro.runtime.ShiftBeeper.test() })
+                    }
                 }
             }
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "hiz speed kalibrasyon calibration ece r39 oem 299 japan jdm doppler gnss kustas true speed saf")) {
             CcPanel(
                 title = "🎯  HIZ KALİBRASYONU",
                 subtitle = "Saf GNSS Doppler hızı veya OEM ECE-R39 fabrika sapması"
@@ -1445,27 +1588,42 @@ private fun SettingsTab(
                         checked = prefs.japan299Lock,
                         onChange = { v -> onPrefsChange { it.copy(japan299Lock = v) } }
                     )
-                    Button(
-                        onClick = onZeroCalibrateNow,
-                        colors = ButtonDefaults.buttonColors(containerColor = CcColors.cyan),
-                        shape = RoundedCornerShape(7.dp)
-                    ) {
-                        Text(
-                            "🎯  " + LocalizationManager.getString(StringKey.SETTINGS_ZERO_LEAN_CALIBRATE_NOW, language),
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
                 }
             }
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "sifirla zero yatis kalibrasyon calibration imu derece")) {
+            CcPanel(
+                title = "📐  SIFIR YATIŞ KALİBRASYONU",
+                subtitle = "Telefonun montajdaki gerçek sürüş pozisyonunu 0° yatış olarak sıfırlar"
+            ) {
+                Button(
+                    onClick = onZeroCalibrateNow,
+                    colors = ButtonDefaults.buttonColors(containerColor = CcColors.cyan),
+                    shape = RoundedCornerShape(7.dp)
+                ) {
+                    Text(
+                        "🎯  Yatışı şimdi sıfırla (0°)",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Motosikleti dik ve düz tutarak basın; yatış açısı, eğim ve teker metrikleri buradan sıfırlanır.",
+                    color = CcColors.muted,
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp
+                )
+            }
+        }
+
+        settingsItem(visible = matchesQuery(query, "gnss uydu satellite sensor imu kalibrasyon sifirla zero fix constellation")) {
             GnssStatusPanel(telemetry)
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "uygulama app ustlabs ust labs launch acilis acilis animasyon boot oyna replay")) {
             CcPanel(
                 title = "🏷  USTLABS / UYGULAMA",
                 subtitle = "Açılış sekansı, geliştirici ve sürüm bilgisi"
@@ -1500,7 +1658,7 @@ private fun SettingsTab(
             }
         }
 
-        item {
+        settingsItem(visible = matchesQuery(query, "garaj garage fabrika factory sifirla reset sil delete veri bakim bakim odometer sayac kilometre km")) {
             CcPanel(
                 title = "🧰  GARAJ VE VERİ BAKIMI",
                 subtitle = "Fabrika profilleri, yol bilgisayarı ve rekorlar"
@@ -1551,6 +1709,85 @@ private fun SettingsTab(
                         text = "USTlabs  ·  MotoCross 1.0.5-PRO  ·  270 OEM gösterge  ·  15 durumlu EKF  ·  C++20 NDK  ·  400 Hz IMU / 120 Hz render",
                         color = CcColors.muted,
                         fontSize = 10.sp
+                    )
+                }
+            }
+        }
+        settingsItem(visible = matchesQuery(query, "odometer sayac kilometre km sifirla reset kalici total trip")) {
+            CcPanel(
+                title = "🛣️  KALICI SAYAÇ",
+                subtitle = "Toplam kilometre göstergesi (uygulama kapansa bile korunur)"
+            ) {
+                if (!confirmOdometerReset) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Odometreyi sıfırla",
+                                color = CcColors.text,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "Toplam km göstergesi 0 km'e döner; trip ve rekorlar korunur.",
+                                color = CcColors.muted,
+                                fontSize = 10.sp,
+                                lineHeight = 13.sp
+                            )
+                        }
+                        CcSmallButton("SIFIRLA", onClick = { confirmOdometerReset = true }, danger = true)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(Color(0xFF2A0E12))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Kalıcı sayaç 0 km'e dönecek. Emin misiniz?",
+                            color = Color(0xFFFF8A80),
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(
+                            onClick = {
+                                confirmOdometerReset = false
+                                onResetOdometer()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = CcColors.red),
+                            shape = RoundedCornerShape(6.dp)
+                        ) { Text("SIFIRLA", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                        Button(
+                            onClick = { confirmOdometerReset = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = CcColors.panel2),
+                            shape = RoundedCornerShape(6.dp)
+                        ) { Text("VAZGEÇ", color = CcColors.muted, fontSize = 11.sp) }
+                    }
+                }
+            }
+        }
+
+        if (query.isNotBlank() && !settingsSectionVisible(query)) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🔍", fontSize = 30.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "'" + query.trim() + "' için ayar bulunamadı",
+                        color = CcColors.muted,
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -1869,7 +2106,7 @@ private fun SimulatorTab(
                         onChange = { simulation.setSpeed(it) }
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        for (g in 0..6) {
+                        for (g in 0..8) {
                             CcGearButton(
                                 label = if (g == 0) "N" else "$g",
                                 selected = simulation.gear == g,
@@ -1948,6 +2185,7 @@ private fun SimulatorTab(
                     rpmScalingMode = prefs.rpmScalingMode,
                     wheelieDisplayMode = WheelieGaugeDisplayMode.ALWAYS_VISIBLE,
                     useMph = prefs.useMph,
+                    useFahrenheit = prefs.useFahrenheit,
                     chromaKeyGreenScreen = false,
                     oledPixelShiftOffset = androidx.compose.ui.geometry.Offset.Zero,
                     language = AppLanguage.TR,
@@ -2375,5 +2613,73 @@ fun demoTelemetryFor(spec: DeclarativeGaugeSpec): UnifiedTelemetryState {
         gpsSpeedSourceBlend = 1.0,
         gpsSatelliteCount = 14,
         gpsHorizontalAccuracyM = 2.4
+    )
+}
+
+
+private fun matchesQuery(query: String, keywords: String): Boolean {
+    if (query.isBlank()) return true
+    val q = query.trim().lowercase(Locale.ROOT)
+    return keywords.lowercase(Locale.ROOT).contains(q)
+}
+
+private fun settingsSectionVisible(query: String): Boolean =
+    listOf(
+        "canli durum live hiz hiz kilometre devir rpm vites gear gnss uydu telemetry",
+        "dil language idioma langue sprache lingua turkce english espanol italiano francais deutsch portugais russo chinese",
+        "birim units mph kmh sicaklik temperature fahrenheit celsius saat clock 12 24 yakit fuel mpg l100 l100km kml",
+        "ekran display tema theme gunduz gece day night oled rpm yatis teker wheelie parlaklik",
+        "shift light gear vites stage evre optimal ecu beep bip",
+        "hiz speed kalibrasyon calibration ece r39 oem 299 japan",
+        "sifirla zero yatis kalibrasyon imu",
+        "gnss uydu satellite sensor imu",
+        "uygulama app ustlabs ust labs launch acilis animasyon",
+        "garaj garage fabrika factory sifirla reset",
+        "odometer sayac kilometre km sifirla reset kalici"
+    ).any { matchesQuery(query, it) }
+
+private fun LazyListScope.settingsItem(
+    visible: Boolean,
+    content: @Composable () -> Unit
+) {
+    if (visible) item { content() }
+}
+
+@Composable
+private fun SettingsSearchBar(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        placeholder = {
+            Text("Ayarlar içinde ara…", color = CcColors.muted, fontSize = 12.sp)
+        },
+        leadingIcon = { Text("🔍", fontSize = 14.sp) },
+        trailingIcon = {
+            if (query.isNotBlank()) {
+                Text(
+                    "×",
+                    modifier = Modifier
+                        .clickable { onQueryChange("") }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    color = CcColors.muted,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = CcColors.orange,
+            unfocusedBorderColor = CcColors.border,
+            focusedContainerColor = CcColors.panel2,
+            unfocusedContainerColor = CcColors.panel2,
+            cursorColor = CcColors.orange,
+            focusedTextColor = CcColors.text,
+            unfocusedTextColor = CcColors.text,
+            focusedPlaceholderColor = CcColors.muted,
+            unfocusedPlaceholderColor = CcColors.muted
+        )
     )
 }
