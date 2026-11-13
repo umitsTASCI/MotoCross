@@ -21,14 +21,30 @@ import kotlin.math.roundToInt
 internal fun DrawScope.drawCentralAnalogHybrid(ctx: GaugeContext) {
     val p = ctx.palette
     val t = ctx.telemetry
-    val variant = skinVariant(ctx.spec.skinId, 3)
+    // Gerçek OEM düzeni tesadüfi değil: bu ailedeki sportbike'ların tamamı
+    // "tek analog devir saati + sağda LCD" kullanır. Çift analog kadran yalnızca
+    // FJR1300 / F4 Oro / ZX-12R / TL1000R / K1300R / RSV Mille gibi touring ve
+    // nostalji modellerinde vardır. Önceden hash tabanlı skinVariant rastgele
+    // seçiyordu (ör. S1000RR K46'ya olmayan bir analog hız saati çiziyordu).
+    val dualAnalogIds = setOf(
+        "yamaha_fjr1300", "mv_agusta_f4_750_oro", "kawasaki_zx12r",
+        "suzuki_tl1000r", "bmw_k1300r", "aprilia_rsv_mille_rp"
+    )
+    val variant = if (ctx.spec.skinId in dualAnalogIds) 1 else 0
     val railH = ctx.h * (if (ctx.spec.displayCategory == com.oemcluster.pro.catalog.GaugeDisplayCategory.RETRO_CLASSIC) 0.088f else 0.082f)
     val stepK = if (ctx.maxRpm <= 11000.0) 1 else 2
     val rpmMajor = max(4, (ctx.maxRpm / (stepK * 1000.0)).roundToInt())
     val rpmFormatter: (Int) -> String = { (it * stepK).toString() }
+    // İbre oranı, ibrenin gerçekten üzerinden geçtiği SON ETİKETLE aynı ölçeğe
+    // bölünmeli. rpmMajor yuvarlanınca (ör. 12.5k -> 12) etiket ölçeği 12.000
+    // olur; ctx.rpmRatio ise 12.500'e bölüyordu ve ibre etiketten sapıyordu.
+    val rpmScaleMax = rpmMajor * stepK * 1000.0
+    val dialRpmRatio = (ctx.mappedRpm / rpmScaleMax).toFloat().coerceIn(0f, 1f)
+    val dialRedlineRatio = (ctx.redlineRpm / rpmScaleMax).toFloat().coerceIn(0.55f, 0.97f)
     val speedMajor = max(4, (ctx.speedScaleMax / 40.0).roundToInt())
     val speedFormatter: (Int) -> String = { (it * 40).toString() }
-    val spdRatio = (ctx.speedValue.toFloat() / ctx.speedScaleMax).coerceIn(0f, 1f)
+    val speedScaleMax = speedMajor * 40
+    val spdRatio = (ctx.speedValue.toFloat() / speedScaleMax).coerceIn(0f, 1f)
 
     drawShiftLeds(ctx.spec, t, p, ctx.w * 0.5f, ctx.u * 4.2f, ctx.w * 0.26f, ctx.u)
 
@@ -39,7 +55,7 @@ internal fun DrawScope.drawCentralAnalogHybrid(ctx: GaugeContext) {
                 val cy = ctx.h * 0.49f
                 val r = min(ctx.h * 0.36f, ctx.w * 0.285f)
                 drawSpeedHubLcd(ctx, ctx.w * 0.73f, ctx.h * 0.16f, ctx.w * 0.24f, ctx.h * 0.64f, railH)
-                drawNeedleDial(cx, cy, r, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
+                drawNeedleDial(cx, cy, r, 140f, 260f, dialRpmRatio, p, ctx.u, p.accent, dialRedlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
                 gText("x1000 r/min", cx, cy + r * 0.52f, ctx.u * 1.6f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.08f)
                 gText("RPM", cx, cy + r * 0.66f, ctx.u * 1.35f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.18f)
                 drawBrandMark(ctx.spec, p, cx, cy - r * 0.58f, ctx.u * 4.2f, ctx.u, p.accent.copy(alpha = 0.55f))
@@ -49,7 +65,7 @@ internal fun DrawScope.drawCentralAnalogHybrid(ctx: GaugeContext) {
                 val rightCx = ctx.w * 0.73f
                 val cy = ctx.h * 0.48f
                 val r = min(ctx.h * 0.31f, ctx.w * 0.21f)
-                drawNeedleDial(leftCx, cy, r, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
+                drawNeedleDial(leftCx, cy, r, 140f, 260f, dialRpmRatio, p, ctx.u, p.accent, dialRedlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
                 gText("x1000 r/min", leftCx, cy + r * 0.55f, ctx.u * 1.35f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
                 drawNeedleDial(rightCx, cy, r, 140f, 260f, spdRatio, p, ctx.u, p.fg, 0.82f, speedMajor, 2, true, labelFormatter = speedFormatter)
                 gText(ctx.speedUnit.uppercase(), rightCx, cy + r * 0.55f, ctx.u * 1.35f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.10f)
@@ -60,7 +76,7 @@ internal fun DrawScope.drawCentralAnalogHybrid(ctx: GaugeContext) {
                 val cx = ctx.w * 0.63f
                 val cy = ctx.h * 0.49f
                 val r = min(ctx.h * 0.35f, ctx.w * 0.275f)
-                drawNeedleDial(cx, cy, r, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
+                drawNeedleDial(cx, cy, r, 140f, 260f, dialRpmRatio, p, ctx.u, p.accent, dialRedlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
                 gText("x1000 r/min", cx, cy + r * 0.52f, ctx.u * 1.55f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
                 drawSpeedHubLcd(ctx, ctx.w * 0.03f, ctx.h * 0.16f, ctx.w * 0.24f, ctx.h * 0.56f, railH)
                 drawBrandMark(ctx.spec, p, cx, cy - r * 0.58f, ctx.u * 4.2f, ctx.u, p.accent.copy(alpha = 0.55f))
@@ -74,7 +90,7 @@ internal fun DrawScope.drawCentralAnalogHybrid(ctx: GaugeContext) {
         val cx = ctx.w * 0.50f
         val cy = ctx.h * 0.34f
         val r = min(ctx.w * 0.40f, ctx.h * 0.23f) * (1f + skinJitter(ctx.spec.skinId, 34) * 0.08f)
-        drawNeedleDial(cx, cy, r, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
+        drawNeedleDial(cx, cy, r, 140f, 260f, dialRpmRatio, p, ctx.u, p.accent, dialRedlineRatio, rpmMajor, if (stepK == 1) 2 else 4, true, labelFormatter = rpmFormatter)
         gText("x1000 r/min", cx, cy + r * 0.58f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
         drawSpeedHubLcd(ctx, ctx.w * 0.08f, ctx.h * 0.53f, ctx.w * 0.84f, ctx.h * 0.24f, railH)
         drawTemperatureAndFuel(ctx, ctx.w * 0.10f, ctx.h * 0.80f, ctx.w * 0.38f, compact = true)
@@ -142,6 +158,10 @@ internal fun DrawScope.drawHayabusaFiveDial(ctx: GaugeContext) {
     val speedMajor = max(4, (ctx.speedScaleMax / 20.0).roundToInt())
     val speedFormatter: (Int) -> String = { (it * 20).toString() }
     val spdRatio = (ctx.speedValue.toFloat() / ctx.speedScaleMax).coerceIn(0f, 1f)
+    // İbre, etiketli son kademeye göre ölçeklenir (ör. 12.5k kadranda son etiket 12).
+    val rpmScaleMax = rpmMajor * 1000.0
+    val dialRpmRatio = (ctx.mappedRpm / rpmScaleMax).toFloat().coerceIn(0f, 1f)
+    val dialRedlineRatio = (ctx.redlineRpm / rpmScaleMax).toFloat().coerceIn(0.55f, 0.97f)
 
     drawShiftLeds(ctx.spec, t, p, ctx.w * 0.5f, ctx.u * 4.0f, ctx.w * 0.30f, ctx.u)
 
@@ -157,7 +177,7 @@ internal fun DrawScope.drawHayabusaFiveDial(ctx: GaugeContext) {
         gText("SPEED", ctx.w * 0.16f, cy - speedR * 0.68f, ctx.u * 1.3f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.12f)
 
         // Devir kadranı (merkez)
-        drawNeedleDial(ctx.w * 0.50f, cy, tachR, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, 2, true, chrome = true, labelFormatter = rpmFormatter)
+        drawNeedleDial(ctx.w * 0.50f, cy, tachR, 140f, 260f, dialRpmRatio, p, ctx.u, p.accent, dialRedlineRatio, rpmMajor, 2, true, chrome = true, labelFormatter = rpmFormatter)
         gText("x1000 r/min", ctx.w * 0.50f, cy + tachR * 0.58f, ctx.u * 1.45f, p.muted, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.08f)
         drawBrandMark(ctx.spec, p, ctx.w * 0.50f, cy - tachR * 0.74f, ctx.u * 4.0f, ctx.u, p.accent.copy(alpha = 0.65f))
 
@@ -178,7 +198,7 @@ internal fun DrawScope.drawHayabusaFiveDial(ctx: GaugeContext) {
         val cx = ctx.w * 0.50f
         val cy = ctx.h * 0.31f
         val r = min(ctx.w * 0.30f, ctx.h * 0.20f)
-        drawNeedleDial(cx, cy, r, 140f, 260f, ctx.rpmRatio, p, ctx.u, p.accent, ctx.redlineRatio, rpmMajor, 2, true, chrome = true, labelFormatter = rpmFormatter)
+        drawNeedleDial(cx, cy, r, 140f, 260f, dialRpmRatio, p, ctx.u, p.accent, dialRedlineRatio, rpmMajor, 2, true, chrome = true, labelFormatter = rpmFormatter)
         gText("x1000 r/min", cx, cy + r * 0.6f, ctx.u * 1.4f, p.muted, Paint.Align.CENTER, ctx.type.label, true)
 
         drawNeedleDial(ctx.w * 0.27f, ctx.h * 0.61f, r * 0.72f, 140f, 260f, spdRatio, p, ctx.u, p.fg, 0.86f, speedMajor, 2, true, chrome = true, labelFormatter = speedFormatter)

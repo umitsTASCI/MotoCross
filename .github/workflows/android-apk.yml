@@ -36,37 +36,37 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Build Debug APK (270 OEM Clusters + C++20 400Hz EKF Engine)
+      - name: Build Debug APK (307 OEM Clusters + C++20 400Hz EKF Engine)
         run: gradle assembleDebug --stacktrace --no-daemon
 
       - name: Prepare APK Package
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk MotoCross-v1.0.0.apk
+          cp app/build/outputs/apk/debug/app-debug.apk MotoCross-v5.0.0.apk
 
       - name: Upload MotoCross APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MotoCross-APK
-          path: MotoCross-v1.0.0.apk
+          path: MotoCross-v5.0.0.apk
           retention-days: 90
 
       - name: Publish Automatic GitHub Release
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "🏍️ MotoCross v1.0.0 (OEM-Cluster Pro) — Official Android APK"
+          tag_name: v5.0.0
+          name: "🏍️ MotoCross v5.0.0 (OEM-Cluster Pro) — Official Android APK"
           body: |
-            ## 🏍️ MotoCross (`OEM-Cluster Pro`) v1.0.0 — Ready-to-Install Android APK
-            **270 Factory Motorcycle Instrument Clusters • 400 Hz C++20 NDK 15-State EKF • 48 kHz Acoustic FFT • 120 Hz Virtual ECU • Wheelie Angle & Wheelie Meter (`°`, `s`, `m`)**
+            ## 🏍️ MotoCross (`OEM-Cluster Pro`) v5.0.0 — Ready-to-Install Android APK
+            **307 Factory Motorcycle Instrument Clusters • 400 Hz C++20 NDK 15-State EKF • 48 kHz Acoustic FFT • 120 Hz Virtual ECU • Wheelie Angle & Wheelie Meter (`°`, `s`, `m`)**
 
             ---
 
             ### 📲 Direct Installation on Android:
-            1. Download **`MotoCross-v1.0.0.apk`** from the **Assets** section below directly to your Android smartphone or tablet.
+            1. Download **`MotoCross-v5.0.0.apk`** from the **Assets** section below directly to your Android smartphone or tablet.
             2. Tap the downloaded APK file and allow installation from unknown sources if prompted.
             3. Launch **MotoCross** and grant **Location (High-Accuracy GPS Doppler)** and **Microphone (Acoustic FFT RPM)** permissions.
-          files: MotoCross-v1.0.0.apk
+          files: MotoCross-v5.0.0.apk
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

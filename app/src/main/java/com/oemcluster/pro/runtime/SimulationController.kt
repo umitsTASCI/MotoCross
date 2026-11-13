@@ -20,10 +20,19 @@ class SimulationController {
     var leanDeg by mutableFloatStateOf(0f)
     var wheelieDeg by mutableFloatStateOf(0f)
 
-    // Teker süresi/mesafesi (frame döngüsü tarafından güncellenir)
+    // Teker süresi/mesafesi ve simülasyon devir izi (frame döngüsü tarafından güncellenir)
     var currentWheelieSec by mutableFloatStateOf(0f)
     var currentWheelieMeters by mutableFloatStateOf(0f)
     var wheelieHoldSec by mutableFloatStateOf(0f)
+    var maxWheelieDeg: Double = 0.0
+    var longestWheelieSec: Double = 0.0
+    var longestWheelieMeters: Double = 0.0
+    var lastRpm: Double = 0.0
+    var filteredRpmRatePerSec: Double = 0.0
+    var displayedRpm: Double = 0.0
+    var rpmVelocity: Double = 0.0
+    var peakHoldRpm: Double = 0.0
+    var peakHoldTimerSec: Double = 0.0
 
     fun start() { active = true }
 
@@ -37,6 +46,15 @@ class SimulationController {
         currentWheelieSec = 0f
         currentWheelieMeters = 0f
         wheelieHoldSec = 0f
+        maxWheelieDeg = 0.0
+        longestWheelieSec = 0.0
+        longestWheelieMeters = 0.0
+        lastRpm = 0.0
+        filteredRpmRatePerSec = 0.0
+        displayedRpm = 0.0
+        rpmVelocity = 0.0
+        peakHoldRpm = 0.0
+        peakHoldTimerSec = 0.0
     }
 
     fun setSpeed(value: Float) {

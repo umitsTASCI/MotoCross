@@ -1,6 +1,7 @@
 package com.oemcluster.pro
 
 import android.Manifest
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -125,6 +126,12 @@ class MainActivity : ComponentActivity() {
 
         hardwareSensorManager = AndroidHardwareSensorManager(this, lifecycleScope)
         hardwareSensorManager.setThemeOverrideMode(startupPrefs.themeOverrideMode)
+        hardwareSensorManager.updateGpsFilterConfig(
+            stationaryDeadbandKmh = startupPrefs.stationaryDeadbandKmh.toDouble(),
+            maxAccuracyMeters = startupPrefs.maxAllowedGpsErrorMeters
+        )
+        ShiftBeeper.setVolume(startupPrefs.shiftBeepVolume)
+        requestedOrientation = orientationForMode(startupPrefs.screenOrientationMode)
 
         val initialBike = BikeDatabaseRepository.activeBikeProfile.value
         NativeTelemetryEngineBridge.applyActiveBikeProfileToNative(initialBike)
@@ -164,6 +171,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onThemeModeChanged = { mode ->
                             hardwareSensorManager.setThemeOverrideMode(mode)
+                        },
+                        onUpdateGpsFilter = { deadband, maxErr ->
+                            hardwareSensorManager.updateGpsFilterConfig(
+                                stationaryDeadbandKmh = deadband.toDouble(),
+                                maxAccuracyMeters = maxErr
+                            )
                         }
                     )
                 }
@@ -222,23 +235,35 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun request120HzRefreshRate() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val display = windowManager.defaultDisplay
-            val bestMode = display.supportedModes.maxByOrNull { it.refreshRate }
-            if (bestMode != null) {
-                val params = window.attributes
-                params.preferredDisplayModeId = bestMode.modeId
-                window.attributes = params
-            }
+        val currentDisplay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display ?: @Suppress("DEPRECATION") windowManager.defaultDisplay
+        } else {
+            @Suppress("DEPRECATION") windowManager.defaultDisplay
+        } ?: return
+        val bestMode = currentDisplay.supportedModes.maxByOrNull { it.refreshRate }
+        if (bestMode != null) {
+            val params = window.attributes
+            params.preferredDisplayModeId = bestMode.modeId
+            window.attributes = params
         }
     }
+}
+
+private fun orientationForMode(mode: Int): Int = when (mode) {
+    // 0 = Otomatik (sensör), 1 = Sabit yatay, 2 = Sabit dikey.
+    // Önceki eşleme "Yatay" seçeneğini sensör-yatay yapıyordu; cihaz ters
+    // tutulduğunda kadran 180° dönüyordu. Artık etiketle birebir.
+    1 -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    2 -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    else -> ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
 }
 
 @Composable
 fun MotoCrossClusterApp(
     onZeroCalibrateNow: () -> Unit,
     onToggleAcousticMic: (Boolean) -> Unit,
-    onThemeModeChanged: (Int) -> Unit
+    onThemeModeChanged: (Int) -> Unit,
+    onUpdateGpsFilter: (Float, Float) -> Unit
 ) {
     val prefs by AppPreferencesRepository.state.collectAsState()
     val activeBike by BikeDatabaseRepository.activeBikeProfile.collectAsState()
@@ -324,6 +349,16 @@ fun MotoCrossClusterApp(
     }
     LaunchedEffect(prefs.acousticMicEnabled) {
         onToggleAcousticMic(prefs.acousticMicEnabled)
+    }
+    LaunchedEffect(prefs.stationaryDeadbandKmh, prefs.maxAllowedGpsErrorMeters) {
+        onUpdateGpsFilter(prefs.stationaryDeadbandKmh, prefs.maxAllowedGpsErrorMeters)
+    }
+    LaunchedEffect(prefs.shiftBeepVolume) {
+        ShiftBeeper.setVolume(prefs.shiftBeepVolume)
+    }
+    LaunchedEffect(prefs.screenOrientationMode) {
+        (context as? ComponentActivity)?.requestedOrientation =
+            orientationForMode(prefs.screenOrientationMode)
     }
 
     // Aktif motor ve shift-light eşikleri değiştiğinde C++ motorunu yeniden yapılandır.
@@ -469,6 +504,7 @@ fun MotoCrossClusterApp(
                 rideRevision = rideRevision,
                 simulation = simulation,
                 initialTab = lastControlCenterTab,
+                onTabChange = { lastControlCenterTab = it },
                 onClose = { controlCenterOpen = false },
                 onSelectGauge = { index -> selectGauge(index) },
                 onSelectBike = { id -> BikeDatabaseRepository.selectActiveBikeProfile(id) },
@@ -487,11 +523,9 @@ fun MotoCrossClusterApp(
                 spec = spec,
                 subModeIndex = subModeIndex,
                 prefs = prefs,
+                activeBike = activeBike,
+                session = session,
                 language = language,
-                tripKm = session.tripAKm,
-                odometerKm = session.odometerKm,
-                sessionKm = session.sessionKm,
-                tripBKm = session.tripBKm,
                 onSwipeLeft = { selectGauge(gaugeIndex + 1) },
                 onSwipeRight = { selectGauge(gaugeIndex - 1) },
                 onDoubleTap = { cycleSubMode() },
@@ -502,6 +536,7 @@ fun MotoCrossClusterApp(
                 hintVisible = hintVisible,
                 gaugeToast = gaugeToast,
                 revision = rideRevision,
+                language = language,
                 onOpenControlCenter = { openControlCenter() },
                 onDismissHint = {
                     hintVisible = false
@@ -528,11 +563,9 @@ private fun LiveClusterHost(
     spec: DeclarativeGaugeSpec,
     subModeIndex: Int,
     prefs: ClusterPreferences,
+    activeBike: BikeMechanicalProfile,
+    session: RideSessionState,
     language: AppLanguage,
-    tripKm: Double,
-    odometerKm: Double,
-    sessionKm: Double,
-    tripBKm: Double,
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit,
     onDoubleTap: () -> Unit,
@@ -578,7 +611,7 @@ private fun LiveClusterHost(
         OemClusterCanvasRenderer(
             spec = spec,
             subModeIndex = subModeIndex,
-            telemetry = telemetry,
+            telemetry = telemetry.copy(fuelLevelRatio = prefs.fuelLevelRatio),
             rpmScalingMode = prefs.rpmScalingMode,
             wheelieDisplayMode = prefs.wheelieDisplayMode,
             useMph = prefs.useMph,
@@ -588,10 +621,19 @@ private fun LiveClusterHost(
             chromaKeyGreenScreen = prefs.chromaKeyGreen,
             oledPixelShiftOffset = pixelShiftOffset,
             language = language,
-            tripKm = tripKm,
-            odometerKm = odometerKm,
-            sessionKm = sessionKm,
-            tripBKm = tripBKm
+            tripKm = session.tripAKm,
+            odometerKm = session.odometerKm,
+            sessionKm = session.sessionKm,
+            tripBKm = session.tripBKm,
+            showStatusRail = prefs.showStatusRail,
+            activeBike = activeBike,
+            best0to60Sec = session.best0to60Sec,
+            best0to100Sec = session.best0to100Sec,
+            peakSpeedKmh = session.peakSpeedKmh,
+            peakLeanLeftDeg = session.peakLeanLeftDeg,
+            peakLeanRightDeg = session.peakLeanRightDeg,
+            avgSpeedKmh = session.avgSpeedKmh,
+            rideTimeSeconds = session.rideTimeSeconds
         )
     }
 }
@@ -601,6 +643,7 @@ private fun ClusterChrome(
     hintVisible: Boolean,
     gaugeToast: String?,
     revision: Int,
+    language: com.oemcluster.pro.i18n.AppLanguage,
     onOpenControlCenter: () -> Unit,
     onDismissHint: () -> Unit
 ) {
@@ -635,7 +678,7 @@ private fun ClusterChrome(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "270",
+                    text = "${OemGaugeCatalog.allModels.size}",
                     color = Color.White.copy(alpha = 0.82f),
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
@@ -695,7 +738,7 @@ private fun ClusterChrome(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "270 OEM GÖSTERGE",
+                            text = "${OemGaugeCatalog.allModels.size} OEM GÖSTERGE",
                             color = Color(0xFFFF6A00),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
@@ -711,9 +754,10 @@ private fun ClusterChrome(
                     }
                     Spacer(Modifier.height(7.dp))
                     Text(
-                        text = "Ekranı sağa veya sola kaydır: 270 model arasında geç.\n" +
-                            "Çift dokun: göstergenin alt modları.\n" +
-                            "Sağ kenardaki sekmeye dokun ya da ekranı basılı tut: Garaj, galeri, ayarlar ve simülatör.",
+                        text = com.oemcluster.pro.i18n.LocalizationManager.getString(
+                            com.oemcluster.pro.i18n.StringKey.ONBOARDING_HINT,
+                            language
+                        ),
                         color = Color(0xFFB8C2D0),
                         fontSize = 11.sp,
                         lineHeight = 16.sp
@@ -729,7 +773,10 @@ private fun ClusterChrome(
                         )
                     ) {
                         Text(
-                            text = "ANLADIM",
+                            text = com.oemcluster.pro.i18n.LocalizationManager.getString(
+                                com.oemcluster.pro.i18n.StringKey.ACTION_GOT_IT,
+                                language
+                            ),
                             color = Color.Black,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
@@ -765,6 +812,9 @@ private fun publishSimulationTelemetry(
         sim.currentWheelieSec += dtSec.toFloat()
         sim.currentWheelieMeters += (trueSpdMs * dtSec).toFloat()
         sim.wheelieHoldSec = 3.2f
+        sim.maxWheelieDeg = max(sim.maxWheelieDeg, sim.wheelieDeg.toDouble())
+        sim.longestWheelieSec = max(sim.longestWheelieSec, sim.currentWheelieSec.toDouble())
+        sim.longestWheelieMeters = max(sim.longestWheelieMeters, sim.currentWheelieMeters.toDouble())
     } else if (sim.wheelieHoldSec > 0f) {
         sim.wheelieHoldSec = (sim.wheelieHoldSec - dtSec.toFloat()).coerceAtLeast(0f)
     } else {
@@ -772,6 +822,7 @@ private fun publishSimulationTelemetry(
         sim.currentWheelieMeters = 0f
     }
 
+    val safeDt = dtSec.coerceIn(0.001, 0.25)
     val rUnloaded = profile.rearTire.unloadedRadiusMm
     val rLean = rUnloaded * profile.rearTire.staticSquishFactor -
         profile.rearTire.crownRadiusMm * (1.0 - cos(Math.toRadians(abs(sim.leanDeg.toDouble()))))
@@ -781,26 +832,77 @@ private fun publishSimulationTelemetry(
     val gearRatio = profile.gearRatios.getOrElse(
         (gear - 1).coerceIn(0, profile.gearRatios.size - 1)
     ) { 1.0 }
-    val calcRpm = if (clutch || isNeutral || !isMoving) {
+    val engaged = !clutch && !isNeutral && isMoving
+    val calcRpm = if (!engaged) {
         profile.idleRpm
     } else {
         (wheelRpm * profile.primaryReductionRatio * profile.finalDriveRatio * gearRatio)
             .coerceIn(profile.idleRpm, profile.revLimiterRpm)
     }
 
-    val optStage2 = if (prefs.autoOptimalShift) {
+    if (sim.lastRpm <= 0.0) {
+        sim.lastRpm = calcRpm
+        sim.peakHoldRpm = calcRpm
+        sim.peakHoldTimerSec = 1.8
+    }
+    val instRpmRate = (calcRpm - sim.lastRpm) / safeDt
+    sim.lastRpm = calcRpm
+    sim.filteredRpmRatePerSec = 0.82 * sim.filteredRpmRatePerSec + 0.18 * instRpmRate
+
+    val baseOptStage2 = if (prefs.autoOptimalShift) {
         profile.computeOptimalShiftRpmForGear(if (gear <= 0) 1 else gear)
     } else {
         prefs.manualStage2Rpm.toDouble()
     }
-    val optStage1 = if (prefs.autoOptimalShift) optStage2 - 1000.0
-    else prefs.manualStage1Rpm.toDouble()
+    // Reaksiyon telafisi: VirtualEcuPhysicsEngine ile aynı sınır (en fazla 1400 RPM).
+    // Sınırsız bırakılırsa ani devir sıçramalarında (ateşleme selamlaması, vites atlama)
+    // shift-light erken yanıp gerçek sürüşteki eşikten sapıyordu.
+    val reactionLead = min(
+        1400.0,
+        max(0.0, sim.filteredRpmRatePerSec) *
+            (prefs.reactionTimeMs.toDouble().coerceIn(0.0, 350.0) / 1000.0)
+    )
+    val optStage2: Double
+    val optStage1: Double
+    if (prefs.autoOptimalShift) {
+        optStage2 = max(profile.idleRpm + 2000.0, baseOptStage2 - reactionLead)
+            .coerceAtMost(profile.redlineRpm)
+        optStage1 = max(profile.idleRpm + 1200.0, optStage2 - 1000.0)
+    } else {
+        optStage2 = prefs.manualStage2Rpm.toDouble()
+            .coerceIn(profile.idleRpm + 800.0, profile.redlineRpm)
+        optStage1 = prefs.manualStage1Rpm.toDouble()
+            .coerceIn(profile.idleRpm + 400.0, optStage2 - 150.0)
+    }
 
     val timeSec = timestampNanos * 1e-9
+
+    // İbre yay-damper fiziği: VirtualEcuPhysicsEngine ile aynı katsayılar
+    // (ωn = 42 rad/s, ζ = 0.88, 2 ms alt adım). Simülasyonda da kadran ibresi
+    // gerçek sürüşteki gibi yumuşak tepki verir; hız sürgüsü anında zıplatmaz.
+    val needleTarget = if (calcRpm >= profile.revLimiterRpm - 80.0) {
+        profile.revLimiterRpm + 150.0 * sin(timeSec * 2.0 * PI * 14.0)
+    } else {
+        calcRpm
+    }
+    if (sim.displayedRpm <= 0.0) {
+        sim.displayedRpm = needleTarget
+        sim.rpmVelocity = 0.0
+    }
+    val needleSteps = max(1, (safeDt / 0.002).toInt())
+    val needleH = safeDt / needleSteps
+    repeat(needleSteps) {
+        val rpmError = needleTarget - sim.displayedRpm
+        val rpmAccel = (42.0 * 42.0 * rpmError) - (2.0 * 0.88 * 42.0 * sim.rpmVelocity)
+        sim.rpmVelocity += rpmAccel * needleH
+        sim.displayedRpm += sim.rpmVelocity * needleH
+    }
+    val displayedEngineRpm = max(0.0, sim.displayedRpm)
+
     val shiftState = when {
-        calcRpm >= profile.revLimiterRpm - 80.0 -> ShiftLightState.OVER_REV_LIMITER
-        calcRpm >= optStage2 -> ShiftLightState.STAGE_2_SHIFT_NOW
-        calcRpm >= optStage1 -> ShiftLightState.STAGE_1_APPROACHING
+        displayedEngineRpm >= profile.revLimiterRpm - 80.0 -> ShiftLightState.OVER_REV_LIMITER
+        displayedEngineRpm >= optStage2 -> ShiftLightState.STAGE_2_SHIFT_NOW
+        displayedEngineRpm >= optStage1 -> ShiftLightState.STAGE_1_APPROACHING
         else -> ShiftLightState.NORMAL
     }
     val flashOn = when (shiftState) {
@@ -809,10 +911,14 @@ private fun publishSimulationTelemetry(
         ShiftLightState.STAGE_1_APPROACHING -> true
         ShiftLightState.NORMAL -> false
     }
-    val bounceRpm = if (shiftState == ShiftLightState.OVER_REV_LIMITER) {
-        profile.revLimiterRpm + 150.0 * sin(timeSec * 2.0 * PI * 14.0)
+
+    if (displayedEngineRpm >= sim.peakHoldRpm) {
+        sim.peakHoldRpm = displayedEngineRpm
+        sim.peakHoldTimerSec = 1.8
+    } else if (sim.peakHoldTimerSec > 0.0) {
+        sim.peakHoldTimerSec -= safeDt
     } else {
-        calcRpm
+        sim.peakHoldRpm = max(displayedEngineRpm, sim.peakHoldRpm - 2800.0 * safeDt)
     }
 
     val rawDisplaySpd = if (prefs.useOemSpeedBias && speedKmh > 1.0) {
@@ -823,8 +929,10 @@ private fun publishSimulationTelemetry(
     val locked299 = prefs.japan299Lock && rawDisplaySpd >= 299.0
     val finalDisplaySpd = if (locked299) 299.0 else rawDisplaySpd
 
-    val trqNm = profile.interpolateEngineTorqueNm(bounceRpm)
-    val wheelHp = ((trqNm * bounceRpm * 2.0 * PI) / 60000.0) * 1.341 * 0.90
+    val trqNm = profile.interpolateEngineTorqueNm(displayedEngineRpm)
+    val driveEff = profile.finalDriveType.mechanicalEfficiency.coerceIn(0.75, 0.98)
+    val wheelHp = if (engaged) ((trqNm * displayedEngineRpm * 2.0 * PI) / 60000.0) * 1.34102209 * driveEff else 0.0
+    val wheelTorqueNm = if (engaged) (trqNm * profile.primaryReductionRatio * profile.finalDriveRatio * gearRatio * driveEff) else 0.0
 
     val autoNight = LocalTime.now().hour.let { it < 7 || it >= 19 }
     val nightFactor = when (prefs.themeOverrideMode) {
@@ -845,9 +953,10 @@ private fun publishSimulationTelemetry(
             trueSpeedKmh = speedKmh,
             displayedSpeedKmh = finalDisplaySpd,
             is299LockEngaged = locked299,
-            actualEngineRpm = bounceRpm,
-            normalizedRpmRatio = bounceRpm / max(1000.0, profile.redlineRpm),
-            peakHoldRpm = bounceRpm,
+            actualEngineRpm = displayedEngineRpm,
+            normalizedRpmRatio = displayedEngineRpm / max(1000.0, profile.redlineRpm),
+            peakHoldRpm = sim.peakHoldRpm,
+            rpmRateOfChangePerSec = sim.filteredRpmRatePerSec,
             stage1ShiftRpm = optStage1,
             stage2ShiftRpm = optStage2,
             shiftLightState = shiftState,
@@ -866,8 +975,8 @@ private fun publishSimulationTelemetry(
             pitchAngleDeg = sim.wheelieDeg.toDouble(),
             effectiveTireRadiusMm = rEffMm,
             estimatedWheelHorsepower = wheelHp,
-            estimatedWheelTorqueNm = trqNm * profile.primaryReductionRatio *
-                profile.finalDriveRatio * gearRatio * 0.92,
+            estimatedWheelTorqueNm = wheelTorqueNm,
+            fuelLevelRatio = prefs.fuelLevelRatio,
             nightModeTransitionFactor = nightFactor,
             ignitionBootPhase = IgnitionBootPhase.RUNNING_LIVE,
             isWheelieActive = isWheelieNow,
@@ -875,9 +984,9 @@ private fun publishSimulationTelemetry(
             wheelieAngleDeg = sim.wheelieDeg.toDouble(),
             currentWheelieDurationSec = sim.currentWheelieSec.toDouble(),
             currentWheelieDistanceMeters = sim.currentWheelieMeters.toDouble(),
-            maxWheelieAngleDeg = sim.wheelieDeg.toDouble().let { max(it, 0.0) },
-            longestWheelieDurationSec = sim.currentWheelieSec.toDouble(),
-            longestWheelieDistanceMeters = sim.currentWheelieMeters.toDouble(),
+            maxWheelieAngleDeg = sim.maxWheelieDeg,
+            longestWheelieDurationSec = sim.longestWheelieSec,
+            longestWheelieDistanceMeters = sim.longestWheelieMeters,
             gearConfidence = if (isNeutral || clutch) 1.0 else 0.98,
             gpsSpeedAgeSec = 1.0e9,
             gpsSpeedAccuracyMs = 0.0,

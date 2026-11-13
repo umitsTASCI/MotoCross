@@ -19,7 +19,7 @@ class AcousticFftRpmDetector {
 public:
     static constexpr size_t FFT_SIZE = 4096;
     static constexpr double SAMPLE_RATE_HZ = 48000.0;
-    static constexpr double HIGH_PASS_CUTOFF_HZ = 40.0;
+    static constexpr double HIGH_PASS_CUTOFF_HZ = 18.0;
 
     AcousticFftRpmDetector() noexcept;
 

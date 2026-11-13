@@ -111,11 +111,16 @@ void AcousticFftRpmDetector::radix2CooleyTukeyFft(
 
 void AcousticFftRpmDetector::executeFftAndHps() noexcept {
     std::array<std::complex<double>, FFT_SIZE> fftBuf{};
-    double rmsEnergy = 0.0;
+    double meanVal = 0.0;
+    for (size_t i = 0; i < FFT_SIZE; ++i) {
+        meanVal += audioRing_[(writePos_ + i) % FFT_SIZE];
+    }
+    meanVal /= static_cast<double>(FFT_SIZE);
 
+    double rmsEnergy = 0.0;
     for (size_t i = 0; i < FFT_SIZE; ++i) {
         const size_t idx = (writePos_ + i) % FFT_SIZE;
-        const double val = audioRing_[idx];
+        const double val = audioRing_[idx] - meanVal;
         rmsEnergy += val * val;
         fftBuf[i] = std::complex<double>(val * hannWindow_[i], 0.0);
     }
@@ -153,11 +158,14 @@ void AcousticFftRpmDetector::executeFftAndHps() noexcept {
 
     std::array<double, HALF_BINS / 4> hpsSpectrum{};
     for (size_t k = minBin; k <= maxBin; ++k) {
-        // m = 1..4 harmonik çarpımı
-        const double y = magnitude[k] *
-                         magnitude[2 * k] *
-                         magnitude[3 * k] *
-                         magnitude[4 * k];
+        // Log-HPS geometrik ortalama: sessiz sinyalde taşma/alt-taşma önler
+        const double logGeo = 0.25 * (
+            std::log(magnitude[k]) +
+            std::log(magnitude[2 * k]) +
+            std::log(magnitude[3 * k]) +
+            std::log(magnitude[4 * k])
+        );
+        const double y = std::exp(logGeo);
         hpsSpectrum[k] = y;
         sumHpsVal += y;
         if (y > maxHpsVal) {
@@ -185,9 +193,11 @@ void AcousticFftRpmDetector::executeFftAndHps() noexcept {
     const double avgHps = sumHpsVal / static_cast<double>(maxBin - minBin + 1);
     const double snrRatio = (avgHps > 1e-18) ? (maxHpsVal / avgHps) : 1.0;
 
-    confidenceScore_ = std::clamp((snrRatio - 3.0) / 25.0, 0.0, 1.0);
+    confidenceScore_ = std::clamp((snrRatio - 3.0) / 18.0, 0.0, 1.0);
     if (confidenceScore_ > 0.25) {
-        detectedAcousticRpm_ = 0.65 * detectedAcousticRpm_ + 0.35 * rawRpm;
+        detectedAcousticRpm_ = (detectedAcousticRpm_ <= 0.0)
+            ? rawRpm
+            : (0.65 * detectedAcousticRpm_ + 0.35 * rawRpm);
     }
 }
 

@@ -14,8 +14,8 @@ android {
         applicationId = "com.oemcluster.pro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10500
-        versionName = "1.0.5-PRO"
+        versionCode = 30700
+        versionName = "5.0.0-PRO"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")

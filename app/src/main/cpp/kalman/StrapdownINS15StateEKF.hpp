@@ -111,6 +111,7 @@ private:
     double P_v_pitch_{0.0};      // Hız ve yokuş eğimi çapraz kovaryansı P(v_x, phi_pitch)
 
     double lastTrueAxMs2_{0.0};
+    double stationaryResidualAxMs2_{0.0};
     double prevTrueAxMs2_{0.0};
     double lastTrueAyMs2_{0.0};
     double filteredJerkXMs3_{0.0};

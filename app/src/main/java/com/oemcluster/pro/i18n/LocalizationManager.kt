@@ -1,5 +1,6 @@
 package com.oemcluster.pro.i18n
 
+import com.oemcluster.pro.catalog.OemGaugeCatalog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -172,7 +173,26 @@ enum class StringKey {
     SETTINGS_WHEELIE_HIDDEN,
     PEAK_MAX_WHEELIE_ANGLE,
     PEAK_LONGEST_WHEELIE_TIME,
-    PEAK_LONGEST_WHEELIE_DIST
+    PEAK_LONGEST_WHEELIE_DIST,
+    SETTINGS_GPS_DEADBAND,
+    SETTINGS_GPS_MAX_ERROR,
+    SETTINGS_FUEL_LEVEL,
+    SETTINGS_ODO_SET,
+    SETTINGS_RESET_ODO,
+    SETTINGS_RESET_TRIPS,
+    SETTINGS_RESET_DRAG_PEAKS,
+    SETTINGS_STATUS_RAIL,
+    SETTINGS_SHIFT_BEEP_VOLUME,
+    SETTINGS_SCREEN_ORIENTATION,
+    SETTINGS_ORIENTATION_AUTO,
+    SETTINGS_ORIENTATION_LANDSCAPE,
+    SETTINGS_ORIENTATION_PORTRAIT,
+    MENU_SIMULATOR,
+    ACTION_RETURN_CLUSTER,
+    LABEL_ACTIVE_BIKE,
+    LABEL_ALL,
+    ONBOARDING_HINT,
+    ACTION_GOT_IT
 }
 
 object LocalizationManager {
@@ -188,15 +208,20 @@ object LocalizationManager {
         return langMap[key] ?: translations[AppLanguage.EN]?.get(key) ?: key.name
     }
 
+    internal fun missingKeysFor(language: AppLanguage): List<StringKey> {
+        val langMap = translations[language] ?: return StringKey.entries.toList()
+        return StringKey.entries.filter { it !in langMap }
+    }
+
     private val translations: Map<AppLanguage, Map<StringKey, String>> = mapOf(
         // =====================================================================
         // 1. TÜRKÇE (TR - VARSAYILAN TAM DESTEK)
         // =====================================================================
         AppLanguage.TR to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Gösterge & Sanal ECU",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Gösterge & Sanal ECU",
             StringKey.CONTROL_CENTER_TITLE to "ANA KONTROL MERKEZİ",
             StringKey.MENU_MY_GARAGE to "Garajım (Motor Profili)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Gösterge Galerisi (270 Model)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Gösterge Galerisi (${OemGaugeCatalog.allModels.size} Model)",
             StringKey.MENU_SETTINGS to "Gelişmiş Ayarlar",
             StringKey.MENU_TRIP_TELEMETRY to "Yol Bilgisayarı & Drag Box",
             StringKey.ACTION_SAVE to "Kaydet",
@@ -207,7 +232,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Aktif Motor Olarak Seç",
             StringKey.ACTION_FAVORITE to "Favorilere Ekle",
             StringKey.ACTION_FAVORITES_ONLY to "Sadece Favori Göstergeler",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "270 model içinde ara (Örn: S1000RR, 390 Duke, R1, Hayabusa)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "${OemGaugeCatalog.allModels.size} model içinde ara (Örn: S1000RR, 390 Duke, R1, Hayabusa)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "AKTİF MEKANİK MOTOR PROFİLİ (TEK GERÇEK VERİ KAYNAĞI)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Hız, Vites, Gerçek RPM ve Shift-Light noktaları tamamen bu mekanik profilden hesaplanır.",
@@ -236,7 +261,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Kesici Devri (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Motosiklet + Sürücü Toplam Ağırlığı (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Tüm Markalar (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Tüm Markalar (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "Modern TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analog Yarış & Hibrit",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Negatif / Pozitif LCD",
@@ -330,17 +355,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Kadranda Gizli (Sadece Rekor Kaydı)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Maks. Teker Açısı (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "En Uzun Teker Süresi (sn)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "En Uzun Teker Mesafesi (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "En Uzun Teker Mesafesi (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "GNSS Durma Eşiği (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Maks. İzin Verilen GPS Hatası",
+            StringKey.SETTINGS_FUEL_LEVEL to "Depo Yakıt Seviyesi",
+            StringKey.SETTINGS_ODO_SET to "Odometreye Değer Yaz",
+            StringKey.SETTINGS_RESET_ODO to "Odometreyi Sıfırla",
+            StringKey.SETTINGS_RESET_TRIPS to "Trip A / Trip B Sıfırla",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "0–60 / 0–100 & Rekorları Sıfırla",
+            StringKey.SETTINGS_STATUS_RAIL to "Üst Durum Şeridini Göster",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Shift Bip Ses Seviyesi",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Ekran Yönü",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Otomatik",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Yatay",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Dikey",
+            StringKey.MENU_SIMULATOR to "Simülatör",
+            StringKey.ACTION_RETURN_CLUSTER to "KADRAJA DÖN",
+            StringKey.LABEL_ACTIVE_BIKE to "AKTİF MOTOR",
+            StringKey.LABEL_ALL to "TÜMÜ",
+            StringKey.ONBOARDING_HINT to "Ekranı sağa veya sola kaydır: ${OemGaugeCatalog.allModels.size} model arasında geç.\nÇift dokun: göstergenin alt modları.\nSağ kenardaki sekmeye dokun ya da ekranı basılı tut: Garaj, galeri, ayarlar ve simülatör.",
+            StringKey.ACTION_GOT_IT to "ANLADIM"
         ),
 
         // =====================================================================
         // 2. ENGLISH (EN)
         // =====================================================================
         AppLanguage.EN to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Gauges & Virtual ECU",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Gauges & Virtual ECU",
             StringKey.CONTROL_CENTER_TITLE to "MASTER CONTROL CENTER",
             StringKey.MENU_MY_GARAGE to "My Garage (Bike Profile)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Dashboard Gallery (270 Models)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Dashboard Gallery (${OemGaugeCatalog.allModels.size} Models)",
             StringKey.MENU_SETTINGS to "Advanced Settings",
             StringKey.MENU_TRIP_TELEMETRY to "Trip Computer & Drag Box",
             StringKey.ACTION_SAVE to "Save",
@@ -351,7 +395,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Set as Active Bike",
             StringKey.ACTION_FAVORITE to "Add to Favorites",
             StringKey.ACTION_FAVORITES_ONLY to "Favorite Gauges Only",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Search 270 models (e.g., S1000RR, 390 Duke, R1, Hayabusa)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Search ${OemGaugeCatalog.allModels.size} models (e.g., S1000RR, 390 Duke, R1, Hayabusa)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "ACTIVE MECHANICAL BIKE PROFILE (SINGLE SOURCE OF TRUTH)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Speed, Gear, True RPM, and Shift-Light thresholds are computed strictly from this mechanical profile.",
@@ -380,7 +424,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Rev Limiter Cut RPM",
             StringKey.PARAM_TOTAL_MASS_KG to "Total Bike + Rider Mass (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "All Brands (270)",
+            StringKey.GALLERY_ALL_BRANDS to "All Brands (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "Modern TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analog Racing & Hybrid",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Negative / Positive LCD",
@@ -474,17 +518,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Hidden on Gauge (Record Stats Only)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Max Wheelie Angle (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Longest Wheelie Time (s)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Longest Wheelie Distance (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Longest Wheelie Distance (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "GNSS Stationary Deadband",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Max Allowed GPS Error",
+            StringKey.SETTINGS_FUEL_LEVEL to "Fuel Tank Level",
+            StringKey.SETTINGS_ODO_SET to "Set Odometer Value",
+            StringKey.SETTINGS_RESET_ODO to "Reset Odometer",
+            StringKey.SETTINGS_RESET_TRIPS to "Reset Trip A / Trip B",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "Reset 0–60 / 0–100 & Peaks",
+            StringKey.SETTINGS_STATUS_RAIL to "Show Top Status Rail",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Shift Beep Volume",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Screen Orientation",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Auto",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Landscape",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Portrait",
+            StringKey.MENU_SIMULATOR to "Simulator",
+            StringKey.ACTION_RETURN_CLUSTER to "CLUSTER",
+            StringKey.LABEL_ACTIVE_BIKE to "ACTIVE BIKE",
+            StringKey.LABEL_ALL to "ALL",
+            StringKey.ONBOARDING_HINT to "Swipe left or right to switch across ${OemGaugeCatalog.allModels.size} models.\nDouble tap for dashboard sub-modes.\nTap the right edge handle or long press for Garage, Gallery, Settings and Simulator.",
+            StringKey.ACTION_GOT_IT to "GOT IT"
         ),
 
         // =====================================================================
         // 3. DEUTSCH (DE)
         // =====================================================================
         AppLanguage.DE to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Cockpits & Virtuelles Steuergerät",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Cockpits & Virtuelles Steuergerät",
             StringKey.CONTROL_CENTER_TITLE to "HAUPTSTEUERZENTRALE",
             StringKey.MENU_MY_GARAGE to "Meine Garage (Motorradprofil)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Cockpit-Galerie (270 Modelle)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Cockpit-Galerie (${OemGaugeCatalog.allModels.size} Modelle)",
             StringKey.MENU_SETTINGS to "Erweiterte Einstellungen",
             StringKey.MENU_TRIP_TELEMETRY to "Bordcomputer & Drag-Box",
             StringKey.ACTION_SAVE to "Speichern",
@@ -495,7 +558,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Als aktives Motorrad wählen",
             StringKey.ACTION_FAVORITE to "Favorit",
             StringKey.ACTION_FAVORITES_ONLY to "Nur Favoriten-Cockpits",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "270 Modelle durchsuchen (z.B. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "${OemGaugeCatalog.allModels.size} Modelle durchsuchen (z.B. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "AKTIVES MECHANISCHES MOTORRADPROFIL (SINGLE SOURCE OF TRUTH)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Geschwindigkeit, Gang, echte Drehzahl und Schaltblitz werden exakt aus diesem Profil berechnet.",
@@ -524,7 +587,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Drehzahlbegrenzer (U/min)",
             StringKey.PARAM_TOTAL_MASS_KG to "Gesamtmasse Motorrad + Fahrer (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Alle Marken (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Alle Marken (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "Modernes TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analog Rennsport & Hybrid",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Negativ / Positiv LCD",
@@ -618,17 +681,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Im Cockpit ausgeblendet (Nur Rekordaufzeichnung)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Max. Wheelie-Winkel (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Längste Wheelie-Dauer (s)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Weiteste Wheelie-Distanz (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Weiteste Wheelie-Distanz (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "GNSS-Stillstandsschwelle (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Max. zulässiger GPS-Fehler",
+            StringKey.SETTINGS_FUEL_LEVEL to "Kraftstofftank-Füllstand",
+            StringKey.SETTINGS_ODO_SET to "Kilometerstand setzen",
+            StringKey.SETTINGS_RESET_ODO to "Kilometerstand zurücksetzen",
+            StringKey.SETTINGS_RESET_TRIPS to "Trip A / Trip B zurücksetzen",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "0–60 / 0–100 & Rekorde zurücksetzen",
+            StringKey.SETTINGS_STATUS_RAIL to "Obere Statusleiste anzeigen",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Schaltblitz-Signalton-Lautstärke",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Bildschirmausrichtung",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Automatisch",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Querformat",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Hochformat",
+            StringKey.MENU_SIMULATOR to "Simulator",
+            StringKey.ACTION_RETURN_CLUSTER to "TACHO",
+            StringKey.LABEL_ACTIVE_BIKE to "AKTIVES BIKE",
+            StringKey.LABEL_ALL to "ALLE",
+            StringKey.ONBOARDING_HINT to "Nach links/rechts wischen: Zwischen ${OemGaugeCatalog.allModels.size} Modellen wechseln.\nDoppeltippen: Cockpit-Untermodi.\nRechte Lasche antippen oder gedrückt halten: Garage, Galerie, Einstellungen & Simulator.",
+            StringKey.ACTION_GOT_IT to "VERSTANDEN"
         ),
 
         // =====================================================================
         // 4. ITALIANO (IT)
         // =====================================================================
         AppLanguage.IT to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Cruscotti & ECU Virtuale",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Cruscotti & ECU Virtuale",
             StringKey.CONTROL_CENTER_TITLE to "CENTRO DI CONTROLLO",
             StringKey.MENU_MY_GARAGE to "Il Mio Garage (Profilo Moto)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galleria Cruscotti (270 Modelli)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galleria Cruscotti (${OemGaugeCatalog.allModels.size} Modelli)",
             StringKey.MENU_SETTINGS to "Impostazioni Avanzate",
             StringKey.MENU_TRIP_TELEMETRY to "Computer di Bordo & Drag Box",
             StringKey.ACTION_SAVE to "Salva",
@@ -639,7 +721,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Imposta come Moto Attiva",
             StringKey.ACTION_FAVORITE to "Preferito",
             StringKey.ACTION_FAVORITES_ONLY to "Solo Cruscotti Preferiti",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Cerca tra 270 modelli (es. Panigale V4, RSV4, 390 Duke)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Cerca tra ${OemGaugeCatalog.allModels.size} modelli (es. Panigale V4, RSV4, 390 Duke)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PROFILO MECCANICO ATTIVO (UNICA FONTE DI VERITÀ)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Velocità, Marcia, Giri Reali e Shift-Light sono calcolati rigorosamente da questo profilo meccanico.",
@@ -668,7 +750,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Limitatore di Giri (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Massa Totale Moto + Pilota (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Tutti i Marchi (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Tutti i Marchi (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "TFT Moderni",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analogici Racing & Ibridi",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Negativi / Positivi",
@@ -762,17 +844,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Nascosto sul Cruscotto (Solo Record)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Max Angolo Impennata (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Impennata Più Lunga (s)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Distanza Impennata Max (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Distanza Impennata Max (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "Soglia di fermo GNSS (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Errore GPS massimo consentito",
+            StringKey.SETTINGS_FUEL_LEVEL to "Livello serbatoio carburante",
+            StringKey.SETTINGS_ODO_SET to "Imposta valore contachilometri",
+            StringKey.SETTINGS_RESET_ODO to "Azzera contachilometri",
+            StringKey.SETTINGS_RESET_TRIPS to "Azzera Trip A / Trip B",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "Azzera 0–60 / 0–100 e record",
+            StringKey.SETTINGS_STATUS_RAIL to "Mostra barra di stato superiore",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Volume avviso acustico cambiata",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Orientamento schermo",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Automatico",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Orizzontale",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Verticale",
+            StringKey.MENU_SIMULATOR to "Simulatore",
+            StringKey.ACTION_RETURN_CLUSTER to "CRUSCOTTO",
+            StringKey.LABEL_ACTIVE_BIKE to "MOTO ATTIVA",
+            StringKey.LABEL_ALL to "TUTTI",
+            StringKey.ONBOARDING_HINT to "Scorri a sinistra o destra per cambiare tra ${OemGaugeCatalog.allModels.size} modelli.\nDoppio tocco: sottomodalità cruscotto.\nTocca la linguetta destra o tieni premuto per Garage, Galleria, Impostazioni e Simulatore.",
+            StringKey.ACTION_GOT_IT to "HO CAPITO"
         ),
 
         // =====================================================================
         // 5. ESPAÑOL (ES)
         // =====================================================================
         AppLanguage.ES to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Cuadros & ECU Virtual",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Cuadros & ECU Virtual",
             StringKey.CONTROL_CENTER_TITLE to "CENTRO DE CONTROL PRINCIPAL",
             StringKey.MENU_MY_GARAGE to "Mi Garaje (Perfil Mecánico)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galería de Cuadros (270 Modelos)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galería de Cuadros (${OemGaugeCatalog.allModels.size} Modelos)",
             StringKey.MENU_SETTINGS to "Ajustes Avanzados",
             StringKey.MENU_TRIP_TELEMETRY to "Ordenador de Viaje & Drag Box",
             StringKey.ACTION_SAVE to "Guardar",
@@ -783,7 +884,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Seleccionar como Moto Activa",
             StringKey.ACTION_FAVORITE to "Favorito",
             StringKey.ACTION_FAVORITES_ONLY to "Solo Cuadros Favoritos",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Buscar entre 270 modelos (ej. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Buscar entre ${OemGaugeCatalog.allModels.size} modelos (ej. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PERFIL MECÁNICO ACTIVO (ÚNICA FUENTE DE VERDAD)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Velocidad, Marcha, RPM Reales y Shift-Light se calculan estrictamente desde este perfil.",
@@ -812,7 +913,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Corte de Encendido (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Masa Total Moto + Piloto (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Todas las Marcas (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Todas las Marcas (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "TFT Modernos",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analógicos Racing e Híbridos",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Negativo / Positivo",
@@ -906,17 +1007,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Oculto en Cuadro (Solo Récords)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Máx. Ángulo de Caballito (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Caballito Más Largo (s)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Mayor Distancia en Caballito (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Mayor Distancia en Caballito (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "Umbral de parada GNSS (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Error GPS máximo permitido",
+            StringKey.SETTINGS_FUEL_LEVEL to "Nivel del depósito de combustible",
+            StringKey.SETTINGS_ODO_SET to "Fijar valor del odómetro",
+            StringKey.SETTINGS_RESET_ODO to "Restablecer odómetro",
+            StringKey.SETTINGS_RESET_TRIPS to "Restablecer Trip A / Trip B",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "Restablecer 0–60 / 0–100 y récords",
+            StringKey.SETTINGS_STATUS_RAIL to "Mostrar barra de estado superior",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Volumen del pitido de cambio",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Orientación de pantalla",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Automático",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Horizontal",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Vertical",
+            StringKey.MENU_SIMULATOR to "Simulador",
+            StringKey.ACTION_RETURN_CLUSTER to "CUADRO",
+            StringKey.LABEL_ACTIVE_BIKE to "MOTO ACTIVA",
+            StringKey.LABEL_ALL to "TODOS",
+            StringKey.ONBOARDING_HINT to "Desliza izquierda o derecha para cambiar entre ${OemGaugeCatalog.allModels.size} modelos.\nDoble toque: submodos del cuadro.\nToca la pestaña derecha o mantén pulsado para Garaje, Galería, Ajustes y Simulador.",
+            StringKey.ACTION_GOT_IT to "ENTENDIDO"
         ),
 
         // =====================================================================
         // 6. FRANÇAIS (FR)
         // =====================================================================
         AppLanguage.FR to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Compteurs & ECU Virtuel",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Compteurs & ECU Virtuel",
             StringKey.CONTROL_CENTER_TITLE to "CENTRE DE CONTRÔLE",
             StringKey.MENU_MY_GARAGE to "Mon Garage (Profil Moto)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galerie de Compteurs (270 Modèles)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galerie de Compteurs (${OemGaugeCatalog.allModels.size} Modèles)",
             StringKey.MENU_SETTINGS to "Paramètres Avancés",
             StringKey.MENU_TRIP_TELEMETRY to "Ordinateur de Bord & Drag Box",
             StringKey.ACTION_SAVE to "Enregistrer",
@@ -927,7 +1047,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Définir comme Moto Active",
             StringKey.ACTION_FAVORITE to "Favori",
             StringKey.ACTION_FAVORITES_ONLY to "Compteurs Favoris Uniquement",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Rechercher parmi 270 modèles (ex. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Rechercher parmi ${OemGaugeCatalog.allModels.size} modèles (ex. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PROFIL MÉCANIQUE ACTIF (SOURCE UNIQUE DE VÉRITÉ)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "La vitesse, le rapport engagé, le régime réel et le Shift-Light sont calculés à partir de ce profil.",
@@ -956,7 +1076,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Rupteur (Rev Limiter tr/min)",
             StringKey.PARAM_TOTAL_MASS_KG to "Masse Totale Moto + Pilote (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Toutes les Marques (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Toutes les Marques (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "TFT Modernes",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analogiques Racing & Hybrides",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Négatif / Positif",
@@ -1050,17 +1170,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Masqué sur le Compteur (Records Uniquement)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Angle Maxi Wheeling (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Plus Long Wheeling (s)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Plus Longue Distance Wheeling (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Plus Longue Distance Wheeling (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "Seuil d'arrêt GNSS (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Erreur GPS maximale tolérée",
+            StringKey.SETTINGS_FUEL_LEVEL to "Niveau du réservoir de carburant",
+            StringKey.SETTINGS_ODO_SET to "Définir le kilométrage",
+            StringKey.SETTINGS_RESET_ODO to "Réinitialiser le totalisateur",
+            StringKey.SETTINGS_RESET_TRIPS to "Réinitialiser Trip A / Trip B",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "Réinitialiser 0–60 / 0–100 et records",
+            StringKey.SETTINGS_STATUS_RAIL to "Afficher la barre d'état supérieure",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Volume du bip de passage de vitesse",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Orientation de l'écran",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Automatique",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Paysage",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Portrait",
+            StringKey.MENU_SIMULATOR to "Simulateur",
+            StringKey.ACTION_RETURN_CLUSTER to "COMPTEUR",
+            StringKey.LABEL_ACTIVE_BIKE to "MOTO ACTIVE",
+            StringKey.LABEL_ALL to "TOUS",
+            StringKey.ONBOARDING_HINT to "Balayez à gauche ou à droite parmi ${OemGaugeCatalog.allModels.size} modèles.\nDouble appui : sous-modes du compteur.\nTouchez l'onglet droit ou appuyez longuement : Garage, Galerie, Paramètres et Simulateur.",
+            StringKey.ACTION_GOT_IT to "COMPRIS"
         ),
 
         // =====================================================================
         // 7. 日本語 (JA)
         // =====================================================================
         AppLanguage.JA to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270車種メーター & 仮想ECU",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size}車種メーター & 仮想ECU",
             StringKey.CONTROL_CENTER_TITLE to "マスターコントロールセンター",
             StringKey.MENU_MY_GARAGE to "マイガレージ（車両機械プロフィール）",
-            StringKey.MENU_DASHBOARD_GALLERY to "メーターギャラリー（全270モデル）",
+            StringKey.MENU_DASHBOARD_GALLERY to "メーターギャラリー（全${OemGaugeCatalog.allModels.size}モデル）",
             StringKey.MENU_SETTINGS to "詳細設定",
             StringKey.MENU_TRIP_TELEMETRY to "トリップ・ドラッグ計測・テレメトリー",
             StringKey.ACTION_SAVE to "保存",
@@ -1071,7 +1210,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "現在の車両として選択",
             StringKey.ACTION_FAVORITE to "お気に入り登録",
             StringKey.ACTION_FAVORITES_ONLY to "お気に入りメーターのみ表示",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "270モデルから検索 (例: R1, S1000RR, 390 Duke, 隼)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "${OemGaugeCatalog.allModels.size}モデルから検索 (例: R1, S1000RR, 390 Duke, 隼)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "現在の車両機械データ（唯一の演算基準データ）",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "速度・ギア段数・実回転数・シフトライトは全てこの車両の機械諸元から算出されます。",
@@ -1100,7 +1239,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "レブリミッター作動回転数 (rpm)",
             StringKey.PARAM_TOTAL_MASS_KG to "車体＋ライダー総重量 (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "全メーカー (270)",
+            StringKey.GALLERY_ALL_BRANDS to "全メーカー (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "最新フルカラーTFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "アナログ＆ハイブリッド",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "反転/通常デジタルLCD",
@@ -1194,17 +1333,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "メーター上では非表示（記録のみ保持）",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "最大ウイリー角度 (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "最長ウイリー時間 (秒)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "最長ウイリー距離 (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "最長ウイリー距離 (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "GNSS停止デッドバンドしきい値",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "許容最大GPS誤差",
+            StringKey.SETTINGS_FUEL_LEVEL to "燃料タンク残量",
+            StringKey.SETTINGS_ODO_SET to "オドメーター値を設定",
+            StringKey.SETTINGS_RESET_ODO to "オドメーターをリセット",
+            StringKey.SETTINGS_RESET_TRIPS to "トリップA / Bをリセット",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "0–60 / 0–100・最高記録をリセット",
+            StringKey.SETTINGS_STATUS_RAIL to "上部ステータスバーを表示",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "シフトビープ音量",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "画面の向き",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "自動",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "横向き",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "縦向き",
+            StringKey.MENU_SIMULATOR to "シミュレーター",
+            StringKey.ACTION_RETURN_CLUSTER to "メーターへ",
+            StringKey.LABEL_ACTIVE_BIKE to "現在のバイク",
+            StringKey.LABEL_ALL to "すべて",
+            StringKey.ONBOARDING_HINT to "左右スワイプで${OemGaugeCatalog.allModels.size}車種のメーターを切替。\nダブルタップ：サブ表示モード切替。\n右端タブまたは長押し：ガレージ・ギャラリー・設定・シミュレーター。",
+            StringKey.ACTION_GOT_IT to "了解"
         ),
 
         // =====================================================================
         // 8. PORTUGUÊS (PT)
         // =====================================================================
         AppLanguage.PT to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Painéis & ECU Virtual",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Painéis & ECU Virtual",
             StringKey.CONTROL_CENTER_TITLE to "CENTRAL DE CONTROLO",
             StringKey.MENU_MY_GARAGE to "Minha Garagem (Perfil da Moto)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Galeria de Painéis (270 Modelos)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Galeria de Painéis (${OemGaugeCatalog.allModels.size} Modelos)",
             StringKey.MENU_SETTINGS to "Definições Avançadas",
             StringKey.MENU_TRIP_TELEMETRY to "Computador de Bordo & Drag Box",
             StringKey.ACTION_SAVE to "Guardar",
@@ -1215,7 +1373,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Definir como Moto Ativa",
             StringKey.ACTION_FAVORITE to "Favorito",
             StringKey.ACTION_FAVORITES_ONLY to "Apenas Painéis Favoritos",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Pesquisar nos 270 modelos (ex: S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Pesquisar nos ${OemGaugeCatalog.allModels.size} modelos (ex: S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "PERFIL MECÂNICO ATIVO (ÚNICA FONTE DE VERDADE)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Velocidade, Mudança, RPM Real e Shift-Light são calculados estritamente a partir deste perfil.",
@@ -1244,7 +1402,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Corte de Ignição (Rev Limiter RPM)",
             StringKey.PARAM_TOTAL_MASS_KG to "Massa Total Moto + Condutor (kg)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Todas as Marcas (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Todas as Marcas (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "TFT Modernos",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Analógicos Racing & Híbridos",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "LCD Negativo / Positivo",
@@ -1338,17 +1496,36 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Oculto no Painel (Apenas Recordes)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Máx. Ângulo de Wheelie (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Maior Tempo em Wheelie (s)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Maior Distância em Wheelie (m)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Maior Distância em Wheelie (m)",
+            StringKey.SETTINGS_GPS_DEADBAND to "Limiar de paragem GNSS (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Erro máximo de GPS permitido",
+            StringKey.SETTINGS_FUEL_LEVEL to "Nível do depósito de combustível",
+            StringKey.SETTINGS_ODO_SET to "Definir valor do odómetro",
+            StringKey.SETTINGS_RESET_ODO to "Repor odómetro",
+            StringKey.SETTINGS_RESET_TRIPS to "Repor Trip A / Trip B",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "Repor 0–60 / 0–100 e recordes",
+            StringKey.SETTINGS_STATUS_RAIL to "Mostrar barra de estado superior",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Volume do sinal sonoro de troca",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Orientação do ecrã",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Automático",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Horizontal",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Vertical",
+            StringKey.MENU_SIMULATOR to "Simulador",
+            StringKey.ACTION_RETURN_CLUSTER to "PAINEL",
+            StringKey.LABEL_ACTIVE_BIKE to "MOTO ATIVA",
+            StringKey.LABEL_ALL to "TODOS",
+            StringKey.ONBOARDING_HINT to "Deslize para a esquerda ou direita entre ${OemGaugeCatalog.allModels.size} modelos.\nDuplo toque: submodos do painel.\nToque na aba direita ou prima continuamente para Garagem, Galeria, Definições e Simulador.",
+            StringKey.ACTION_GOT_IT to "ENTENDI"
         ),
 
         // =====================================================================
         // 9. РУССКИЙ (RU)
         // =====================================================================
         AppLanguage.RU to mapOf(
-            StringKey.APP_TITLE to "MotoCross — 270 Приборных Панелей и Виртуальный ЭБУ",
+            StringKey.APP_TITLE to "MotoCross — ${OemGaugeCatalog.allModels.size} Приборных Панелей и Виртуальный ЭБУ",
             StringKey.CONTROL_CENTER_TITLE to "ЦЕНТР УПРАВЛЕНИЯ",
             StringKey.MENU_MY_GARAGE to "Мой Гараж (Профиль Мотоцикла)",
-            StringKey.MENU_DASHBOARD_GALLERY to "Галерея Приборок (270 Моделей)",
+            StringKey.MENU_DASHBOARD_GALLERY to "Галерея Приборок (${OemGaugeCatalog.allModels.size} Моделей)",
             StringKey.MENU_SETTINGS to "Расширенные Настройки",
             StringKey.MENU_TRIP_TELEMETRY to "Бортовой Компьютер и Drag Box",
             StringKey.ACTION_SAVE to "Сохранить",
@@ -1359,7 +1536,7 @@ object LocalizationManager {
             StringKey.ACTION_SELECT_ACTIVE_BIKE to "Сделать Активным Мотоциклом",
             StringKey.ACTION_FAVORITE to "В Избранное",
             StringKey.ACTION_FAVORITES_ONLY to "Только Избранные Панели",
-            StringKey.SEARCH_MODELS_PLACEHOLDER to "Поиск среди 270 моделей (напр. S1000RR, 390 Duke, R1)...",
+            StringKey.SEARCH_MODELS_PLACEHOLDER to "Поиск среди ${OemGaugeCatalog.allModels.size} моделей (напр. S1000RR, 390 Duke, R1)...",
 
             StringKey.GARAGE_ACTIVE_PROFILE_BADGE to "АКТИВНЫЙ МЕХАНИЧЕСКИЙ ПРОФИЛЬ (ЕДИНЫЙ ИСТОЧНИК ДАННЫХ)",
             StringKey.GARAGE_SINGLE_SOURCE_WARNING to "Скорость, передача, реальные обороты и Shift-Light рассчитываются строго по этому профилю.",
@@ -1388,7 +1565,7 @@ object LocalizationManager {
             StringKey.PARAM_REV_LIMITER_RPM to "Отсечка (Rev Limiter об/мин)",
             StringKey.PARAM_TOTAL_MASS_KG to "Общая Масса Мотоцикл + Пилот (кг)",
 
-            StringKey.GALLERY_ALL_BRANDS to "Все Марки (270)",
+            StringKey.GALLERY_ALL_BRANDS to "Все Марки (${OemGaugeCatalog.allModels.size})",
             StringKey.GALLERY_FILTER_TFT to "Современные TFT",
             StringKey.GALLERY_FILTER_ANALOG_HYBRID to "Аналоговые Спорт и Гибрид",
             StringKey.GALLERY_FILTER_NEGATIVE_LCD to "Инверсные / Обычные LCD",
@@ -1482,7 +1659,26 @@ object LocalizationManager {
             StringKey.SETTINGS_WHEELIE_HIDDEN to "Скрыт на Панели (Только Рекорды)",
             StringKey.PEAK_MAX_WHEELIE_ANGLE to "Макс. Угол Вилли (°)",
             StringKey.PEAK_LONGEST_WHEELIE_TIME to "Самое Долгое Вилли (с)",
-            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Макс. Дистанция Вилли (м)"
+            StringKey.PEAK_LONGEST_WHEELIE_DIST to "Макс. Дистанция Вилли (м)",
+            StringKey.SETTINGS_GPS_DEADBAND to "Порог остановки GNSS (Deadband)",
+            StringKey.SETTINGS_GPS_MAX_ERROR to "Макс. допустимая погрешность GPS",
+            StringKey.SETTINGS_FUEL_LEVEL to "Уровень топлива в баке",
+            StringKey.SETTINGS_ODO_SET to "Установить одометр",
+            StringKey.SETTINGS_RESET_ODO to "Сбросить одометр",
+            StringKey.SETTINGS_RESET_TRIPS to "Сбросить Trip A / Trip B",
+            StringKey.SETTINGS_RESET_DRAG_PEAKS to "Сбросить 0–60 / 0–100 и рекорды",
+            StringKey.SETTINGS_STATUS_RAIL to "Показывать верхнюю строку состояния",
+            StringKey.SETTINGS_SHIFT_BEEP_VOLUME to "Громкость сигнала переключения",
+            StringKey.SETTINGS_SCREEN_ORIENTATION to "Ориентация экрана",
+            StringKey.SETTINGS_ORIENTATION_AUTO to "Авто",
+            StringKey.SETTINGS_ORIENTATION_LANDSCAPE to "Альбомная",
+            StringKey.SETTINGS_ORIENTATION_PORTRAIT to "Портретная",
+            StringKey.MENU_SIMULATOR to "Симулятор",
+            StringKey.ACTION_RETURN_CLUSTER to "ПРИБОРКА",
+            StringKey.LABEL_ACTIVE_BIKE to "МОТОЦИКЛ",
+            StringKey.LABEL_ALL to "ВСЕ",
+            StringKey.ONBOARDING_HINT to "Проведите влево или вправо для переключения между ${OemGaugeCatalog.allModels.size} моделями.\nДвойное касание: подрежимы панели.\nНажмите на правый ярлык или удерживайте экран: Гараж, Галерея, Настройки и Симулятор.",
+            StringKey.ACTION_GOT_IT to "ПОНЯТНО"
         )
     )
 }

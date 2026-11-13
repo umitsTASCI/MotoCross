@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.lerp
 import com.oemcluster.pro.catalog.DeclarativeGaugeSpec
 import com.oemcluster.pro.catalog.GaugeDisplayCategory
 import com.oemcluster.pro.catalog.GaugeGeometryType
+import com.oemcluster.pro.data.BikePresetCatalog
+import com.oemcluster.pro.domain.BikeMechanicalProfile
 import com.oemcluster.pro.domain.IgnitionBootPhase
 import com.oemcluster.pro.domain.RpmScalingMode
 import com.oemcluster.pro.domain.ShiftLightState
@@ -52,9 +54,21 @@ fun OemClusterCanvasRenderer(
     tripKm: Double = 0.0,
     odometerKm: Double = 0.0,
     sessionKm: Double = 0.0,
-    tripBKm: Double = 0.0
+    tripBKm: Double = 0.0,
+    showStatusRail: Boolean = true,
+    activeBike: BikeMechanicalProfile? = null,
+    best0to60Sec: Double = 0.0,
+    best0to100Sec: Double = 0.0,
+    peakSpeedKmh: Double = 0.0,
+    peakLeanLeftDeg: Double = 0.0,
+    peakLeanRightDeg: Double = 0.0,
+    avgSpeedKmh: Double = 0.0,
+    rideTimeSeconds: Double = 0.0
 ) {
     val type = remember(spec.skinId) { typographyFor(spec) }
+    val resolvedBike = activeBike ?: remember(spec.skinId) {
+        BikePresetCatalog.all.firstOrNull { it.profileId == spec.skinId }
+    }
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val w = size.width
@@ -73,6 +87,7 @@ fun OemClusterCanvasRenderer(
         val baseBg = lerp(dayBg, nightBg, telemetry.nightModeTransitionFactor.coerceIn(0f, 1f))
         val baseFg = lerp(dayFg, nightFg, telemetry.nightModeTransitionFactor.coerceIn(0f, 1f))
         val inverted = telemetry.fullColorInversionActive &&
+            supportsFullScreenShiftInversion(spec) &&
             (telemetry.shiftLightState == ShiftLightState.STAGE_2_SHIFT_NOW ||
                 telemetry.shiftLightState == ShiftLightState.OVER_REV_LIMITER)
 
@@ -126,6 +141,16 @@ fun OemClusterCanvasRenderer(
             odometerKm = odometerKm,
             sessionKm = sessionKm,
             tripBKm = tripBKm,
+            showStatusRail = showStatusRail,
+            chromaKey = chromaKeyGreenScreen,
+            activeBike = resolvedBike,
+            best0to60Sec = best0to60Sec,
+            best0to100Sec = best0to100Sec,
+            peakSpeedKmh = peakSpeedKmh,
+            peakLeanLeftDeg = peakLeanLeftDeg,
+            peakLeanRightDeg = peakLeanRightDeg,
+            avgSpeedKmh = avgSpeedKmh,
+            rideTimeSeconds = rideTimeSeconds,
             w = w,
             h = h
         )
@@ -169,6 +194,11 @@ fun OemClusterCanvasRenderer(
     }
 }
 
+private fun supportsFullScreenShiftInversion(spec: DeclarativeGaugeSpec): Boolean {
+    if (spec.displayCategory != GaugeDisplayCategory.MODERN_TFT) return false
+    return spec.brand == "KTM" || spec.brand == "Husqvarna"
+}
+
 private fun peakRatioFor(telemetry: UnifiedTelemetryState, spec: DeclarativeGaugeSpec): Float {
     if (!spec.hasPeakHoldTrail || telemetry.peakHoldRpm <= 0.0) return -1f
     val mapped = telemetry.peakHoldRpm * (spec.gaugeRedlineRpm / max(1000.0, telemetry.bikeRedlineRpm))
@@ -176,6 +206,7 @@ private fun peakRatioFor(telemetry: UnifiedTelemetryState, spec: DeclarativeGaug
 }
 
 private fun DrawScope.drawBackdrop(ctx: GaugeContext) {
+    if (ctx.chromaKey) return
     val p = ctx.palette
     when (ctx.spec.displayCategory) {
         GaugeDisplayCategory.ANALOG_HYBRID, GaugeDisplayCategory.RETRO_CLASSIC -> {

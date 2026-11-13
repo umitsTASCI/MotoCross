@@ -47,7 +47,7 @@ class RideSessionState {
     var tripBKm: Double = 0.0
 
     /** Kalıcı toplam kilometre (km). Uygulama her açıldığında bu değer korunur. */
-    var odometerKm: Double = 1420.5
+    var odometerKm: Double = 0.0
 
     /** Bu açılışa ait seyahat sayacı; uygulama her açıldığında sıfırdan başlar. */
     var sessionKm: Double = 0.0
@@ -63,6 +63,7 @@ class RideSessionState {
     var rideTimeSeconds: Double = 0.0
     var avgSpeedKmh: Double = 0.0
 
+    var best0to60Sec: Double = 0.0
     var best0to100Sec: Double = 0.0
     var best0to200Sec: Double = 0.0
     var bestQuarterMileSec: Double = 0.0
@@ -72,6 +73,7 @@ class RideSessionState {
     var dragElapsedSec: Double = 0.0
     var dragDistanceM: Double = 0.0
     var dragSpeedKmh: Double = 0.0
+    var last0to60Sec: Double = 0.0
     var last0to100Sec: Double = 0.0
     var lastQuarterMileSec: Double = 0.0
 
@@ -82,9 +84,11 @@ class RideSessionState {
     private var avgDistanceKm: Double = 0.0
     private var avgTimeSec: Double = 0.0
 
+    private var armedFromStop: Boolean = true
     private var launchRunning: Boolean = false
     private var launchElapsed: Double = 0.0
     private var launchDistanceM: Double = 0.0
+    private var launchT60: Double = -1.0
     private var launchT100: Double = -1.0
     private var launchT200: Double = -1.0
     private var launchT400: Double = -1.0
@@ -103,6 +107,7 @@ class RideSessionState {
         longestWheelieSec = prefs.longestWheelieSec
         longestWheelieMeters = prefs.longestWheelieMeters
         rideTimeSeconds = prefs.rideTimeSeconds
+        best0to60Sec = prefs.best0to60Sec
         best0to100Sec = prefs.best0to100Sec
         best0to200Sec = prefs.best0to200Sec
         bestQuarterMileSec = prefs.bestQuarterMileSec
@@ -145,12 +150,16 @@ class RideSessionState {
         val speed = t.trueSpeedKmh
         dragSpeedKmh = speed
 
-        // Kalkış: duruştan harekete geçiş. 0-100 / 0-200 / çeyrek mil buradan ölçülür.
+        // Kalkış: duruştan (armedFromStop) harekete geçiş. 0-100 / 0-200 / çeyrek mil buradan ölçülür.
         if (!launchRunning) {
-            if (speed > 0.6 && speed < 8.0) {
+            if (speed < 1.5) {
+                armedFromStop = true
+            } else if (armedFromStop && speed >= 1.8) {
                 launchRunning = true
+                armedFromStop = false
                 launchElapsed = 0.0
                 launchDistanceM = 0.0
+                launchT60 = -1.0
                 launchT100 = -1.0
                 launchT200 = -1.0
                 launchT400 = -1.0
@@ -162,11 +171,21 @@ class RideSessionState {
             dragElapsedSec = launchElapsed
             dragDistanceM = launchDistanceM
 
+            if (launchT60 < 0.0 && speed >= 60.0) {
+                launchT60 = launchElapsed
+                last0to60Sec = launchT60
+                if (best0to60Sec <= 0.0 || launchT60 < best0to60Sec) {
+                    best0to60Sec = launchT60
+                    bestChanged = true
+                }
+            }
             if (launchT100 < 0.0 && speed >= 100.0) {
                 launchT100 = launchElapsed
                 last0to100Sec = launchT100
-                bestChanged = best0to100Sec <= 0.0 || launchT100 < best0to100Sec
-                if (bestChanged) best0to100Sec = launchT100
+                if (best0to100Sec <= 0.0 || launchT100 < best0to100Sec) {
+                    best0to100Sec = launchT100
+                    bestChanged = true
+                }
             }
             if (launchT200 < 0.0 && speed >= 200.0) {
                 launchT200 = launchElapsed
@@ -211,6 +230,13 @@ class RideSessionState {
         pushToPrefs()
     }
 
+    /** Kullanıcının motosikletinin gerçek ODO değerini girmesini sağlar (km cinsinden). */
+    @JvmName("assignOdometerKm")
+    fun setOdometerKm(valueKm: Double) {
+        odometerKm = valueKm.coerceIn(0.0, 999_999.9)
+        pushToPrefs()
+    }
+
     fun resetPeaks() {
         peakSpeedKmh = 0.0
         peakRpm = 0.0
@@ -223,9 +249,11 @@ class RideSessionState {
     }
 
     fun resetDragRecords() {
+        best0to60Sec = 0.0
         best0to100Sec = 0.0
         best0to200Sec = 0.0
         bestQuarterMileSec = 0.0
+        last0to60Sec = 0.0
         last0to100Sec = 0.0
         lastQuarterMileSec = 0.0
         pushToPrefs()
@@ -247,9 +275,11 @@ class RideSessionState {
         avgSpeedKmh = 0.0
         avgDistanceKm = 0.0
         avgTimeSec = 0.0
+        best0to60Sec = 0.0
         best0to100Sec = 0.0
         best0to200Sec = 0.0
         bestQuarterMileSec = 0.0
+        last0to60Sec = 0.0
         last0to100Sec = 0.0
         lastQuarterMileSec = 0.0
         pushToPrefs()
@@ -275,6 +305,7 @@ class RideSessionState {
                 longestWheelieSec = longestWheelieSec,
                 longestWheelieMeters = longestWheelieMeters,
                 rideTimeSeconds = rideTimeSeconds,
+                best0to60Sec = best0to60Sec,
                 best0to100Sec = best0to100Sec,
                 best0to200Sec = best0to200Sec,
                 bestQuarterMileSec = bestQuarterMileSec

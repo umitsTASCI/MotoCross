@@ -132,7 +132,7 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             9, "ktm_250_duke_2024", "KTM", "250 Duke (5\" Segmented LCD)", "2024+",
-            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.NONE_INTERNAL_ONLY,
             10000.0, 12000.0, false, true, "READY TO RACE", listOf("Negative LCD"),
             0xFF0C0E12, 0xFFF5F5F5, 0xFF07080A, 0xFFFFFFFF, 0xFFFF6600,
             0xFFFF6600, 0xFFFF6600, 0xFF07080A
@@ -274,14 +274,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             28, "honda_cbr650r_lcd", "Honda", "CBR650R / CB650R (Dual Negative LCD)", "2019–2023",
             GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
-            12000.0, 14000.0, true, true, "FOUR CYLINDER // 650R", listOf("Negative LCD"),
+            12500.0, 14000.0, true, true, "FOUR CYLINDER // 650R", listOf("Negative LCD"),
             0xFF0A0D14, 0xFFF2F5FA, 0xFF06080D, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFFFFFFF, 0xFF06080D
         ),
         DeclarativeGaugeSpec(
             29, "honda_cbr650r_2024_tft", "Honda", "CBR650R / CB650R (5\" E-Clutch TFT)", "2024+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            12000.0, 14000.0, false, true, "HONDA // E-CLUTCH", listOf("Bar", "Circle", "Simple"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            12500.0, 14000.0, true, true, "HONDA // E-CLUTCH", listOf("Bar", "Circle", "Simple"),
             0xFFF5F5F5, 0xFF0D1016, 0xFF07090D, 0xFFFFFFFF, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -396,8 +396,8 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             45, "kawasaki_z_h2", "Kawasaki", "Z H2 Supercharged (4.3\" Boost TFT)", "2020+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            12000.0, 14000.0, true, true, "Z H2 // SUPERCHARGED", listOf("Type 1 Boost", "Type 2 Track"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            11500.0, 13500.0, true, true, "Z H2 // SUPERCHARGED", listOf("Type 1 Boost", "Type 2 Track"),
             0xFFF2F5F2, 0xFF0C0F0C, 0xFF060806, 0xFFFFFFFF, 0xFF64DD17,
             0xFFFFB300, 0xFFFF1744, 0xFFFFFFFF
         ),
@@ -421,14 +421,14 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             48, "bmw_m1000r", "BMW Motorrad", "S1000R / M1000R Roadster Core TFT", "2021+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            12500.0, 14000.0, true, true, "M ROADSTER // R", listOf("Core 1", "Core 2", "Pure Ride"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            14600.0, 16000.0, true, true, "M ROADSTER // R", listOf("Core 1", "Core 2", "Pure Ride"),
             0xFFF4F6FA, 0xFF0B0E14, 0xFF06080E, 0xFFFFFFFF, 0xFF0066B1,
             0xFF0099FF, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
-            49, "bmw_s1000xr", "BMW Motorrad", "S1000XR / M1000XR Sport-Touring TFT", "2020+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            49, "bmw_s1000xr", "BMW Motorrad", "S1000XR (K69 6.5\" Connectivity TFT)", "2020+",
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             12000.0, 14000.0, true, true, "XR // M MOTORSPORT", listOf("Pure Ride", "Core 1", "Core 2"),
             0xFFF4F6FA, 0xFF0B0E14, 0xFF06080E, 0xFFFFFFFF, 0xFF0066B1,
             0xFF0099FF, 0xFFE60012, 0xFFFFFFFF
@@ -605,7 +605,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             73, "suzuki_vstrom_1050de", "Suzuki", "V-Strom 1050DE (5\" Adventure TFT)", "2023+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10500.0, false, true, "V-STROM // MASTER OF ADVENTURE", listOf("Adventure", "Gravel"),
+            9250.0, 10500.0, false, true, "V-STROM // MASTER OF ADVENTURE", listOf("Adventure", "Gravel"),
             0xFFF5F5F5, 0xFF0D1016, 0xFF07090D, 0xFFFFFFFF, 0xFFFFD600,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -683,14 +683,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             83, "triumph_tiger_900_1200", "Triumph", "Tiger 900 / Tiger 1200 (7\" Panoramic TFT)", "2020+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SYMMETRIC_PINCER_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9500.0, 11000.0, false, true, "TIGER // FOR THE RIDE", listOf("Style 1", "Style 2", "Off-Road Pro"),
+            10000.0, 11500.0, false, true, "TIGER // FOR THE RIDE", listOf("Style 1", "Style 2", "Off-Road Pro"),
             0xFFF4F5F7, 0xFF0E1014, 0xFF07080B, 0xFFFFFFFF, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             84, "triumph_thruxton_bonneville", "Triumph", "Thruxton RS / Bonneville T120 (Dual Chrome)", "2016–2024",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            7500.0, 9000.0, false, false, "BONNEVILLE // THRUXTON RS", listOf("Classic Twin Clock"),
+            8000.0, 9500.0, false, false, "BONNEVILLE // THRUXTON RS", listOf("Classic Twin Clock"),
             0xFF0D0F14, 0xFFF5F0E6, 0xFF08090C, 0xFFFFE4B5, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -700,14 +700,14 @@ object OemGaugeCatalog {
         // =====================================================================
         DeclarativeGaugeSpec(
             85, "mv_agusta_brutale_1000rr", "MV Agusta", "Brutale 1000 RR / F3 RR / Superveloce (5.5\" TFT)", "2021+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             14000.0, 16000.0, true, true, "MV AGUSTA // MOTORCYCLE ART", listOf("Track", "Road"),
             0xFF0B0D12, 0xFFFFFFFF, 0xFF06070A, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
-            86, "husqvarna_svartpilen_2024", "Husqvarna", "Svartpilen / Vitpilen 401 & 801 (5\" Bauhaus TFT)", "2024+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            86, "husqvarna_svartpilen_2024", "Husqvarna", "Svartpilen / Vitpilen 401 (5\" Bauhaus TFT)", "2024+",
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
             10200.0, 12000.0, false, true, "HUSQVARNA // PIONEERING SINCE 1903", listOf("Street", "Dynamic"),
             0xFFF5F5F5, 0xFF0C0E12, 0xFF08090C, 0xFFFFFFFF, 0xFFFFEA00,
             0xFFFFEA00, 0xFFFFEA00, 0xFF08090C
@@ -715,14 +715,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             87, "husqvarna_svartpilen_puck_lcd", "Husqvarna", "Svartpilen 401 / 701 (Round Puck LCD)", "2018–2023",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
-            10000.0, 12000.0, false, false, "SVARTPILEN // VITPILEN", listOf("Monochrome Puck"),
+            9000.0, 10500.0, false, false, "SVARTPILEN // VITPILEN", listOf("Monochrome Puck"),
             0xFF0D0F14, 0xFFF5F5F5, 0xFF08090C, 0xFFFFEA00, 0xFFFFEA00,
             0xFFFFEA00, 0xFFFFEA00, 0xFF08090C
         ),
         DeclarativeGaugeSpec(
             88, "husqvarna_norden_901", "Husqvarna", "Norden 901 Expedition (Cyan/Yellow TFT)", "2022+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            10000.0, 12000.0, false, true, "NORDEN 901 // EXPEDITION", listOf("Explorer", "Street", "Offroad"),
+            9500.0, 11000.0, false, true, "NORDEN 901 // EXPEDITION", listOf("Explorer", "Street", "Offroad"),
             0xFFF5F5F5, 0xFF0C0E12, 0xFF07090D, 0xFFFFFFFF, 0xFFFFEA00,
             0xFF00E5FF, 0xFFFFEA00, 0xFF07090D
         ),
@@ -738,8 +738,8 @@ object OemGaugeCatalog {
         // GRUP 11: CFMOTO, BENELLI & ROYAL ENFIELD (6 Model: #97 - #102)
         // =====================================================================
         DeclarativeGaugeSpec(
-            90, "cfmoto_450sr_675srr", "CFMoto", "450SR / 450SS & 675SR-R (5\" Curved TFT)", "2023+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            90, "cfmoto_450sr_675srr", "CFMoto", "450SR / 450SS (5\" Curved TFT)", "2023+",
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             11500.0, 13000.0, true, true, "CFMOTO // SR RACING", listOf("Track", "Eco"),
             0xFFF2F5F8, 0xFF0C1018, 0xFF06080D, 0xFFFFFFFF, 0xFF00E5FF,
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
@@ -759,9 +759,9 @@ object OemGaugeCatalog {
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
-            93, "benelli_tnt600i_trk702", "Benelli", "TNT 600i / TRK 702X (5\" Color TFT)", "2021+",
+            93, "benelli_tnt600i_trk702", "Benelli", "TNT 600i (5\" Color TFT)", "2021+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11500.0, 13000.0, false, true, "BENELLI // PESARO 1911", listOf("Day", "Night"),
+            12000.0, 13500.0, false, true, "BENELLI // PESARO 1911", listOf("Day", "Night"),
             0xFFF2F4F8, 0xFF0E121A, 0xFF07090E, 0xFFFFFFFF, 0xFF00C853,
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
         ),
@@ -824,29 +824,29 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             101, "tvs_apache_rr310", "TVS", "Apache RR 310", "2017–2020",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9700.0, 11000.0, true, true, "APACHE // RACE CYLINDER", listOf("Race", "Urban / Rain"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            10000.0, 11500.0, true, true, "APACHE // RACE CYLINDER", listOf("Race", "Urban / Rain"),
             0xFFF5F5F5, 0xFF141414, 0xFF06080D, 0xFFFFFFFF, 0xFFE30612,
             0xFFE30612, 0xFFFFFFFF, 0xFF06080D
         ),
         DeclarativeGaugeSpec(
             102, "tvs_apache_rtr_310", "TVS", "Apache RTR 310", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9700.0, 11000.0, true, true, "APACHE // RTR 310", listOf("Sport", "Urban / Rain"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            10000.0, 11500.0, true, true, "APACHE // RTR 310", listOf("Sport", "Urban / Rain"),
             0xFFF5F5F5, 0xFF141414, 0xFF06080D, 0xFFFFFFFF, 0xFFE30612,
             0xFFE30612, 0xFFFFFFFF, 0xFF06080D
         ),
         DeclarativeGaugeSpec(
             103, "tvs_ronin_225", "TVS", "Ronin 225", "2023",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            7500.0, 9000.0, false, true, "RONIN // UNLEASHED", listOf("Gravel", "Street"),
+            8500.0, 10000.0, false, true, "RONIN // UNLEASHED", listOf("Gravel", "Street"),
             0xFFF5F5F5, 0xFF141414, 0xFF08090C, 0xFFF2E9D4, 0xFFE30612,
             0xFFFF9100, 0xFFE30612, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             104, "tvs_raider_125", "TVS", "Raider 125", "2022+",
             GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.SINGLE_UPPER_LED,
-            7500.0, 9000.0, false, true, "RAIDER // NEXT LEVEL RACING", listOf("Street", "Eco"),
+            8500.0, 9500.0, false, true, "RAIDER // NEXT LEVEL RACING", listOf("Street", "Eco"),
             0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFFFFFFF, 0xFFE30612,
             0xFFE30612, 0xFF1E1A12, 0xFFFFFFFF
         ),
@@ -877,22 +877,22 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             108, "bajaj_pulsar_n250", "Bajaj", "Pulsar N250", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9500.0, 10500.0, false, true, "PULSAR // N250 NEO", listOf("Sport", "Urban"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            10000.0, 11000.0, false, true, "PULSAR // N250 NEO", listOf("Sport", "Urban"),
             0xFFF5F5F5, 0xFF101010, 0xFF07080A, 0xFFF5F5F5, 0xFF00E5FF,
             0xFF00E5FF, 0xFF00E5FF, 0xFF07080A
         ),
         DeclarativeGaugeSpec(
             109, "bajaj_dominar_250", "Bajaj", "Dominar 250", "2020",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10000.0, false, true, "DOMINAR // 250 TOURING", listOf("Touring", "Sport"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            9500.0, 11000.0, false, true, "DOMINAR // 250 TOURING", listOf("Touring", "Sport"),
             0xFFF5F5F5, 0xFF101010, 0xFF07080A, 0xFFF5F5F5, 0xFF00E5FF,
             0xFF00B0FF, 0xFF00E5FF, 0xFF07080A
         ),
         DeclarativeGaugeSpec(
             110, "bajaj_dominar_400", "Bajaj", "Dominar 400", "2021",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9500.0, 10500.0, true, true, "DOMINAR // 400 TOURING", listOf("Touring", "Sport"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            10000.0, 11500.0, true, true, "DOMINAR // 400 TOURING", listOf("Touring", "Sport"),
             0xFFF5F5F5, 0xFF101010, 0xFF07080A, 0xFFF5F5F5, 0xFF00E5FF,
             0xFF00B0FF, 0xFF00E5FF, 0xFF07080A
         ),
@@ -919,8 +919,8 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             114, "bajaj_pulsar_ns400z", "Bajaj", "Pulsar NS400 Z", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8800.0, 10500.0, true, true, "PULSAR // NS400 Z", listOf("Sport", "Track"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            9500.0, 11000.0, true, true, "PULSAR // NS400 Z", listOf("Sport", "Track"),
             0xFFF5F5F5, 0xFF0A0A0A, 0xFF060608, 0xFFF5F5F5, 0xFFFF3D00,
             0xFFFF3D00, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -938,21 +938,21 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             116, "hero_xtreme_200s", "Hero", "Xtreme 200S", "2023",
             GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.SINGLE_UPPER_LED,
-            8000.0, 9500.0, true, true, "XTREME // 200S RACE", listOf("Sport", "Urban"),
+            9000.0, 10000.0, true, true, "XTREME // 200S RACE", listOf("Sport", "Urban"),
             0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFFF6600, 0xFFFF6600,
             0xFFFF9100, 0xFFFF6600, 0xFF06080D
         ),
         DeclarativeGaugeSpec(
             117, "hero_xpulse_200_4v", "Hero", "Xpulse 200 4V", "2023",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8500.0, 10000.0, false, true, "XPULSE // FEARLESS", listOf("Trail", "Rally"),
+            9000.0, 10000.0, false, true, "XPULSE // FEARLESS", listOf("Trail", "Rally"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFFFFEB3B,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             118, "hero_xpulse_210", "Hero", "Xpulse 210", "2024",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9250.0, 11000.0, false, true, "XPULSE // 210 RALLY", listOf("Rally", "Trail"),
+            10000.0, 11500.0, false, true, "XPULSE // 210 RALLY", listOf("Rally", "Trail"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFFFFEB3B,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -1041,7 +1041,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             129, "benelli_imperiale_400", "Benelli", "Imperiale 400", "2019",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            5500.0, 7000.0, false, false, "IMPERIALE // CLASSIC", listOf("Clasic", "Urban"),
+            6000.0, 7500.0, false, false, "IMPERIALE // CLASSIC", listOf("Clasic", "Urban"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF00B4A0,
             0xFF00B4A0, 0xFF00B4A0, 0xFFFFFFFF
         ),
@@ -1101,15 +1101,15 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             137, "honda_nc750x", "Honda", "NC750X", "2024",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            7500.0, 8500.0, false, true, "NC // 750X DCT", listOf("Touring", "Urban"),
+            7000.0, 8500.0, false, true, "NC // 750X DCT", listOf("Touring", "Urban"),
             0xFFF5F5F5, 0xFF101218, 0xFF080A0F, 0xFFF4F4F6, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
-            138, "honda_rebel_500", "Honda", "Rebel 500", "2017",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9500.0, 11000.0, false, true, "REBEL // 500 CRUISER", listOf("Cruiser", "Street"),
-            0xFFF5F5F5, 0xFF101010, 0xFF07080A, 0xFFF5F5F5, 0xFFE60012,
+            138, "honda_rebel_500", "Honda", "Rebel 500", "2017–2024",
+            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            9500.0, 11000.0, false, true, "REBEL // 500 CRUISER", listOf("Negative LCD", "Gear + Trip"),
+            0xFF0A0E18, 0xFFEAF2FF, 0xFF05070B, 0xFFEAF2FF, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
@@ -1174,16 +1174,16 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             147, "yamaha_xsr700", "Yamaha", "XSR700", "2016",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            10500.0, 11500.0, true, true, "XSR // HERITAGE RACER", listOf("Street", "Sport"),
-            0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFF00B0FF,
+            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            10500.0, 11500.0, true, true, "XSR // HERITAGE RACER", listOf("Negative LCD", "Sport"),
+            0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFE8F2FF, 0xFF00B0FF,
             0xFFFF9100, 0xFF00B0FF, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             148, "yamaha_xsr900", "Yamaha", "XSR900", "2020",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11500.0, 12500.0, true, true, "XSR // CP3 HERITAGE", listOf("Street", "Sport"),
-            0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFF00B0FF,
+            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            11000.0, 12500.0, true, true, "XSR // CP3 HERITAGE", listOf("Round Negative LCD", "Sport"),
+            0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFE8F2FF, 0xFF00B0FF,
             0xFFFF9100, 0xFF00B0FF, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
@@ -1196,7 +1196,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             150, "yamaha_tracer_9_gt", "Yamaha", "Tracer 9 GT", "2021",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11500.0, 12500.0, true, true, "TRACER // SPORT TOURING GT", listOf("Touring", "Sport"),
+            11000.0, 12500.0, true, true, "TRACER // SPORT TOURING GT", listOf("Touring", "Sport"),
             0xFFF5F5F5, 0xFF101218, 0xFF080A0F, 0xFFF4F4F6, 0xFF00B0FF,
             0xFFFF9100, 0xFF00B0FF, 0xFFFFFFFF
         ),
@@ -1224,14 +1224,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             154, "yamaha_xjr1300", "Yamaha", "XJR1300", "2016",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10000.0, false, false, "XJR // 1300 RETRO", listOf("Retro", "Street"),
+            8500.0, 10000.0, false, false, "XJR // 1300 RETRO", listOf("Retro", "Street"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF00B0FF,
             0xFF00B0FF, 0xFFFF6A00, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             155, "yamaha_sr400", "Yamaha", "SR400", "2014",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            6500.0, 8000.0, false, false, "SR // 400 HERITAGE", listOf("Retro", "Classic"),
+            7000.0, 8000.0, false, false, "SR // 400 HERITAGE", listOf("Retro", "Classic"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF00B0FF,
             0xFF00B0FF, 0xFFFF6A00, 0xFFFFFFFF
         ),
@@ -1284,7 +1284,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             162, "kawasaki_klx230", "Kawasaki", "KLX230", "2020",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10000.0, false, true, "KLX // 230 DUAL SPORT", listOf("Trail", "Urban"),
+            8500.0, 10000.0, false, true, "KLX // 230 DUAL SPORT", listOf("Trail", "Urban"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFF64DD17,
             0xFFFFB300, 0xFF64DD17, 0xFFFFFFFF
         ),
@@ -1297,7 +1297,7 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             164, "kawasaki_z400", "Kawasaki", "Z400", "2019",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             11750.0, 13000.0, true, true, "Z // SUGOMI 400", listOf("Street", "Sport"),
             0xFFF5F5F5, 0xFF0B0E0B, 0xFF060906, 0xFFF5F5F5, 0xFF64DD17,
             0xFFFFB300, 0xFF64DD17, 0xFFFFFFFF
@@ -1305,7 +1305,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             165, "kawasaki_z650_rs", "Kawasaki", "Z650 RS", "2022",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            10500.0, 12000.0, true, true, "Z // 650RS RETRO", listOf("Retro", "Sport"),
+            10000.0, 12000.0, true, true, "Z // 650RS RETRO", listOf("Retro", "Sport"),
             0xFFF5F5F5, 0xFF0B0E0B, 0xFF060906, 0xFFF5F5F5, 0xFF64DD17,
             0xFFFFB300, 0xFF64DD17, 0xFFFFFFFF
         ),
@@ -1325,7 +1325,7 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             168, "kawasaki_ninja_1000sx", "Kawasaki", "Ninja 1000SX", "2021",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             12500.0, 14000.0, true, true, "NINJA // 1000SX SPORT TOURER", listOf("Sport Touring", "Sport"),
             0xFFF5F5F5, 0xFF0B0E0B, 0xFF060906, 0xFFF5F5F5, 0xFF64DD17,
             0xFFFFB300, 0xFF64DD17, 0xFFFFFFFF
@@ -1357,10 +1357,10 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             172, "suzuki_drz400s", "Suzuki", "DR-Z400S", "2000",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9000.0, 10000.0, false, false, "DR // Z400S LEGEND", listOf("Enduro", "Dual Sport"),
-            0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF0091EA,
-            0xFF0091EA, 0xFFFF3D00, 0xFFFFFFFF
+            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            9000.0, 10000.0, false, false, "DR // Z400S LEGEND", listOf("Enduro LCD", "Dual Sport"),
+            0xFF0B140E, 0xFFD9FFCC, 0xFF060A08, 0xFFC5F8B8, 0xFF0091EA,
+            0xFFFFAB00, 0xFFFF3D00, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             173, "suzuki_gsx250r", "Suzuki", "GSX250R", "2014",
@@ -1378,10 +1378,10 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             175, "suzuki_sv650", "Suzuki", "SV650", "2019",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            10000.0, 11000.0, true, true, "SV // 650 GLADIUS", listOf("Sport", "Street"),
-            0xFFF5F5F5, 0xFF0D1016, 0xFF07090D, 0xFFFFFFFF, 0xFF0091EA,
-            0xFFFF9100, 0xFF0091EA, 0xFF07090D
+            GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            10000.0, 11000.0, true, true, "SV // 650 V-TWIN", listOf("Negative LCD", "Sport"),
+            0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFEAF2FF, 0xFF0091EA,
+            0xFFFF9100, 0xFF0091EA, 0xFF06080D
         ),
 
         // =====================================================================
@@ -1410,15 +1410,15 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             179, "bmw_g310rr", "BMW Motorrad", "G310RR", "2021",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11000.0, 12000.0, true, true, "RR // SPORT", listOf("Sport", "Track"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            10500.0, 12000.0, true, true, "RR // SPORT", listOf("Sport", "Track"),
             0xFFF4F6FA, 0xFF0B0E14, 0xFF06080E, 0xFFFFFFFF, 0xFF0066B1,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             180, "bmw_m1000xr", "BMW Motorrad", "M 1000 XR", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            14550.0, 16000.0, true, true, "M // 1000 XR M COMPETITION", listOf("Pure Ride", "Core 1", "Core 2", "Core 3"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            14600.0, 16000.0, true, true, "M // 1000 XR M COMPETITION", listOf("Pure Ride", "Core 1", "Core 2", "Core 3"),
             0xFFF4F6FA, 0xFF0B0E14, 0xFF06080E, 0xFFFFFFFF, 0xFF0066B1,
             0xFF0099FF, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -1449,14 +1449,14 @@ object OemGaugeCatalog {
         // =====================================================================
         DeclarativeGaugeSpec(
             184, "ducati_monster_821", "Ducati", "Monster 821", "2018",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             11000.0, 12000.0, true, true, "MONSTER // IL MOSTRO", listOf("Street", "Sport"),
             0xFFF5F5F5, 0xFF0B0B0E, 0xFF070709, 0xFFFFFFFF, 0xFFFF0000,
             0xFFFF8800, 0xFFFF0000, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             185, "ducati_monster_1200", "Ducati", "Monster 1200", "2017",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             11000.0, 12000.0, true, true, "MONSTER // IL MOSTRO", listOf("Street", "Sport"),
             0xFFF5F5F5, 0xFF0B0B0E, 0xFF070709, 0xFFFFFFFF, 0xFFFF0000,
             0xFFFF8800, 0xFFFF0000, 0xFFFFFFFF
@@ -1470,7 +1470,7 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             187, "ducati_streetfighter_v2", "Ducati", "Streetfighter V2", "2022",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             11500.0, 13000.0, true, true, "STREETFIGHTER // V2 FIGHT FORMULA", listOf("Street", "Track"),
             0xFFF5F5F5, 0xFF0B0B0E, 0xFF060608, 0xFFFFFFFF, 0xFFFF0000,
             0xFFFF8800, 0xFFFF0000, 0xFFFFFFFF
@@ -1523,16 +1523,16 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             194, "aprilia_dorsoduro_900", "Aprilia", "Dorsoduro 900", "2018",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             10000.0, 11000.0, false, true, "DORSODURO // 900 SUPER MOTO", listOf("Street", "Track"),
             0xFFF5F5F5, 0xFF0E1014, 0xFF07080B, 0xFFFFFFFF, 0xFFFF1E1E,
             0xFFFFAB00, 0xFFFF1E1E, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             195, "aprilia_dorsoduro_1200", "Aprilia", "Dorsoduro 1200", "2013",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.SEQUENTIAL_6_WHITE_LEDS,
-            10750.0, 12500.0, true, true, "DORSODURO // 1200 SUPER MOTO", listOf("Street", "Track"),
-            0xFFF5F5F5, 0xFF0E1014, 0xFF07080B, 0xFFFFFFFF, 0xFFFF1E1E,
+            GaugeDisplayCategory.ANALOG_HYBRID, GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
+            10750.0, 12500.0, true, true, "DORSODURO // 1200 SUPER MOTO", listOf("Analog + Matrix", "Sport"),
+            0xFF0E1014, 0xFFFFFFFF, 0xFF07080B, 0xFFFFC166, 0xFFFF1E1E,
             0xFFFFAB00, 0xFFFF1E1E, 0xFFFFFFFF
         ),
 
@@ -1555,7 +1555,7 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             198, "triumph_trident_660", "Triumph", "Trident 660", "2021",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             12000.0, 13000.0, true, true, "TRIDENT // 660 MODERN CLASSIC", listOf("Street", "Sport"),
             0xFFF4F5F7, 0xFF0E1014, 0xFF07080B, 0xFFFFFFFF, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
@@ -1577,7 +1577,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             201, "triumph_bonneville_t100", "Triumph", "Bonneville T100", "2017",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            6000.0, 7500.0, false, false, "BONNEVILLE // T100 ICON", listOf("Classic", "Urban"),
+            7000.0, 8500.0, false, false, "BONNEVILLE // T100 ICON", listOf("Classic", "Urban"),
             0xFF0D0F14, 0xFFF5F0E6, 0xFF08090C, 0xFFFFE4B5, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -1594,21 +1594,21 @@ object OemGaugeCatalog {
         // =====================================================================
         DeclarativeGaugeSpec(
             203, "mv_agusta_brutale_800rr", "MV Agusta", "Brutale 800 RR", "2020",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             14000.0, 15500.0, true, true, "BRUTALE // 800RR TRIPLE", listOf("Street", "Track"),
             0xFF0B0D12, 0xFFFFFFFF, 0xFF06070A, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             204, "mv_agusta_f3_800", "MV Agusta", "F3 800", "2012",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             13500.0, 15000.0, true, true, "F3 // 800 TRIPLE", listOf("Track", "Road"),
             0xFF0B0D12, 0xFFFFFFFF, 0xFF06070A, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             205, "mv_agusta_rush_1000", "MV Agusta", "Rush 1000", "2019",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             14000.0, 15500.0, true, true, "RUSH // 1000 LIMITED", listOf("Track", "Street"),
             0xFF0B0D12, 0xFFFFFFFF, 0xFF06070A, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
@@ -1701,7 +1701,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             217, "royal_enfield_scramble_411", "Royal Enfield", "Scram 411", "2022",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            6000.0, 8000.0, false, true, "SCRAM // 411 RALLY", listOf("Adventure", "Trail"),
+            6500.0, 8000.0, false, true, "SCRAM // 411 RALLY", listOf("Adventure", "Trail"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFFFFAB00,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
@@ -1710,16 +1710,16 @@ object OemGaugeCatalog {
         // GRUP 30: HARLEY-DAVIDSON (6 Model: #226 - #231)
         // =====================================================================
         DeclarativeGaugeSpec(
-            218, "harley_street_glide", "Harley-Davidson", "Street Glide", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            5500.0, 6500.0, false, true, "STREET GLIDE // FLH 2024", listOf("Touring", "Cruising"),
+            218, "harley_street_glide", "Harley-Davidson", "Street Glide (12.3\" Skyline OS TFT)", "2024",
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            5500.0, 6500.0, false, true, "STREET GLIDE // SKYLINE OS", listOf("Cruise", "Sport", "Touring"),
             0xFF0A0B0E, 0xFFFFFFFF, 0xFF050608, 0xFFFFFFFF, 0xFFFF6600,
             0xFFFF6600, 0xFFFF1744, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
-            219, "harley_road_glide", "Harley-Davidson", "Road Glide", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            5500.0, 6500.0, false, true, "ROAD GLIDE // 117", listOf("Touring", "Cruising"),
+            219, "harley_road_glide", "Harley-Davidson", "Road Glide (12.3\" Skyline OS TFT)", "2024",
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            5500.0, 6500.0, false, true, "ROAD GLIDE // 117 SKYLINE", listOf("Cruise", "Sport", "Touring"),
             0xFF0A0B0E, 0xFFFFFFFF, 0xFF050608, 0xFFFFFFFF, 0xFFFF6600,
             0xFFFF6600, 0xFFFF1744, 0xFFFFFFFF
         ),
@@ -1745,9 +1745,9 @@ object OemGaugeCatalog {
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
-            223, "harley_cvo_street_glide", "Harley-Davidson", "CVO Street Glide", "2023",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            5500.0, 6500.0, false, true, "CVO // 117 STREET GLIDE", listOf("Touring", "Cruising"),
+            223, "harley_cvo_street_glide", "Harley-Davidson", "CVO Street Glide (12.3\" Skyline OS TFT)", "2023",
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            5500.0, 6500.0, false, true, "CVO // 121 SKYLINE OS", listOf("Sport", "Cruise", "Touring"),
             0xFF0A0B0E, 0xFFFFFFFF, 0xFF050608, 0xFFFFFFFF, 0xFFFF6600,
             0xFFFF6600, 0xFFFF1744, 0xFFFFFFFF
         ),
@@ -1845,8 +1845,8 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             236, "husqvarna_vitpilen_801", "Husqvarna", "Vitpilen 801", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            10500.0, 11500.0, true, true, "VITPILEN // 801 BAUHAUS", listOf("Street", "Track"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
+            10000.0, 11500.0, true, true, "VITPILEN // 801 BAUHAUS", listOf("Street", "Track"),
             0xFFF5F5F5, 0xFF0C0E12, 0xFF08090C, 0xFFFFFFFF, 0xFFFFEA00,
             0xFFFFEA00, 0xFFFFEA00, 0xFF08090C
         ),
@@ -1870,14 +1870,14 @@ object OemGaugeCatalog {
         // =====================================================================
         DeclarativeGaugeSpec(
             239, "cfmoto_450nk", "CFMoto", "450NK", "2023",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             11500.0, 13000.0, true, true, "CFMOTO // 450NK STREET", listOf("Street", "Sport"),
             0xFFF2F5F8, 0xFF0C1018, 0xFF06080D, 0xFFFFFFFF, 0xFF00E5FF,
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             240, "cfmoto_450ss", "CFMoto", "450SS", "2024",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             11500.0, 13000.0, true, true, "CFMOTO // 450SS SPORT", listOf("Sport", "Track"),
             0xFFF2F5F8, 0xFF0C1018, 0xFF06080D, 0xFFFFFFFF, 0xFF00E5FF,
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
@@ -1914,20 +1914,20 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             244, "bmw_r18", "BMW Motorrad", "R 18", "2020",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            5000.0, 6000.0, false, false, "R // 18 MIGHTY BOXER", listOf("Cruiser", "Touring"),
+            5500.0, 6500.0, false, false, "R // 18 MIGHTY BOXER", listOf("Cruiser", "Touring"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF0066B1,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             245, "honda_cb400_super_four", "Honda", "CB400 Super Four", "1999",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            12500.0, 15000.0, false, false, "SUPER FOUR // CB400", listOf("Street", "Sport"),
+            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            13000.0, 15000.0, false, false, "SUPER FOUR // CB400", listOf("Twin Analog", "VTEC"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             246, "yamaha_fjr1300", "Yamaha", "FJR1300", "2001",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.ANALOG_HYBRID, GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
             9000.0, 11000.0, false, true, "FJR // 1300 GRAND TOURER", listOf("Touring", "Sport"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFF00B0FF,
             0xFFFF9100, 0xFF00B0FF, 0xFFFFFFFF
@@ -1956,7 +1956,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             250, "honda_xr650l", "Honda", "XR650L", "2000",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            6000.0, 8000.0, false, true, "XR // 650L LEGEND", listOf("Trail", "Dual Sport"),
+            6500.0, 8000.0, false, true, "XR // 650L LEGEND", listOf("Trail", "Dual Sport"),
             0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -1991,7 +1991,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             255, "honda_cb750_four", "Honda", "CB750 Four", "1969",
             GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8000.0, 10500.0, false, false, "CB // 750 FOUR THE ORIGINAL", listOf("Retro", "Classic"),
+            8500.0, 10500.0, false, false, "CB // 750 FOUR THE ORIGINAL", listOf("Retro", "Classic"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -2005,42 +2005,42 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             257, "ducati_superleggera_v4", "Ducati", "Superleggera V4", "2020",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SHARP_HORIZONTAL_EVO_TFT, ShiftLedPattern.MOTOGP_MARSHAL_BAR,
-            15000.0, 16500.0, true, true, "SUPERLEGGERA // V4 THE ULTIMATE", listOf("Track", "Race"),
+            16000.0, 17500.0, true, true, "SUPERLEGGERA // V4 THE ULTIMATE", listOf("Track", "Race"),
             0xFF050508, 0xFFFFFFFF, 0xFF040406, 0xFFFFFFFF, 0xFFFF0000,
             0xFFFFD600, 0xFFFF0000, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             258, "mv_agusta_f4_750_oro", "MV Agusta", "F4 750 Oro", "1999",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            13500.0, 14500.0, false, true, "F4 // 750 ORO MASTERPIECE", listOf("Street", "Track"),
-            0xFF0B0D12, 0xFFFFFFFF, 0xFF06070A, 0xFFFFFFFF, 0xFFE60012,
+            GaugeDisplayCategory.ANALOG_HYBRID, GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
+            13500.0, 14500.0, false, true, "F4 // 750 ORO MASTERPIECE", listOf("Analog + Matrix", "Track"),
+            0xFF0B0D12, 0xFFF4EFE6, 0xFF06070A, 0xFFFFE6B8, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             259, "kawasaki_zx12r", "Kawasaki", "Ninja ZX-12R", "2000",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11500.0, 13000.0, false, true, "NINJA // ZX-12R THUNDER", listOf("Retro", "Sport"),
+            GaugeDisplayCategory.ANALOG_HYBRID, GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
+            11500.0, 13000.0, false, true, "NINJA // ZX-12R THUNDER", listOf("Analog + LCD", "Sport"),
             0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFF64DD17,
             0xFFFFB300, 0xFF64DD17, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             260, "triumph_trophy_1200", "Triumph", "Trophy 1200", "2002",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8000.0, 9500.0, false, true, "TROPHY // 1200 GRAND TOURER", listOf("Touring", "Cruiser"),
-            0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFFE60012,
+            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            9500.0, 11000.0, false, false, "TROPHY // 1200 GRAND TOURER", listOf("Touring Twin Dials"),
+            0xFF0C0E12, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             261, "honda_africa_twin_750", "Honda", "Africa Twin 750", "1993",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.RALLY_TOWER_VERTICAL_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8000.0, 9500.0, false, true, "AFRICA TWIN // 750 LEGEND", listOf("Rally", "Adventure"),
-            0xFFF5F5F5, 0xFF12151C, 0xFF080A0F, 0xFFF5F5F5, 0xFFE60012,
+            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.DUAL_CLASSIC_ANALOG, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            8000.0, 9500.0, false, false, "AFRICA TWIN // 750 LEGEND", listOf("Twin Analog + Tripmaster"),
+            0xFF0C0D10, 0xFFF5E6C8, 0xFF07080A, 0xFFFFE4B5, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             262, "suzuki_tl1000r", "Suzuki", "TL1000R", "1998",
-            GaugeDisplayCategory.RETRO_CLASSIC, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.SINGLE_UPPER_LED,
-            11500.0, 13500.0, true, true, "TL // 1000R THE MONSTER", listOf("Sport", "Track"),
+            GaugeDisplayCategory.ANALOG_HYBRID, GaugeGeometryType.CENTRAL_ANALOG_HYBRID_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
+            11000.0, 13000.0, true, true, "TL // 1000R THE MONSTER", listOf("Analog + Dual LCD", "Track"),
             0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFFFFFFF, 0xFF0091EA,
             0xFFFFAB00, 0xFF0091EA, 0xFF06080D
         ),
@@ -2058,14 +2058,14 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             264, "honda_nx500", "Honda", "NX500 (5\" Bonded RoadSync TFT)", "2024+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8500.0, 10000.0, false, true, "HONDA // NX500", listOf("Circle", "Bar", "Simple"),
+            9000.0, 10500.0, false, true, "HONDA // NX500", listOf("Circle", "Bar", "Simple"),
             0xFFF4F6F9, 0xFF0D1016, 0xFF07090E, 0xFFFFFFFF, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             265, "honda_cb1000_hornet_sp", "Honda", "CB1000 Hornet SP (5\" Optical TFT)", "2025+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
-            11500.0, 13000.0, true, true, "HORNET // 1000 SP", listOf("Sport", "Track", "Street"),
+            11750.0, 13000.0, true, true, "HORNET // 1000 SP", listOf("Sport", "Track", "Street"),
             0xFFF2F4F8, 0xFF0B0E14, 0xFF06080D, 0xFFFFFFFF, 0xFFFFAB00,
             0xFFFF6D00, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -2079,7 +2079,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             267, "yamaha_yzf_r9", "Yamaha", "YZF-R9 (5\" CP3 YRC Track TFT)", "2025+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.BOOMERANG_BAR_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
-            10500.0, 12000.0, true, true, "YAMAHA // YZF-R9", listOf("Theme 1 Track", "Theme 2 Street", "Theme 3 Minimal"),
+            10800.0, 12000.0, true, true, "YAMAHA // YZF-R9", listOf("Theme 1 Track", "Theme 2 Street", "Theme 3 Minimal"),
             0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFFFFFFF, 0xFF0055FF,
             0xFFFFAB00, 0xFF0055FF, 0xFFFFFFFF
         ),
@@ -2120,8 +2120,8 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             273, "suzuki_gsx_s1000gx", "Suzuki", "GSX-S1000GX+ (6.5\" SAES Crossover TFT)", "2024+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11500.0, 13000.0, true, true, "SUZUKI // GSX-S1000GX", listOf("Active", "Touring"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            11750.0, 13000.0, true, true, "SUZUKI // GSX-S1000GX", listOf("Active", "Touring"),
             0xFFF2F5FA, 0xFF0D111A, 0xFF060910, 0xFFFFFFFF, 0xFF0091EA,
             0xFFFFAB00, 0xFF0091EA, 0xFFFFFFFF
         ),
@@ -2197,15 +2197,15 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             284, "moto_guzzi_v100_mandello", "Moto Guzzi", "V100 Mandello S (5\" Adaptive Aero TFT)", "2023+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             9500.0, 11000.0, false, true, "MOTO GUZZI // V100", listOf("Sport", "Touring"),
             0xFFF3F5F8, 0xFF10131A, 0xFF07090D, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             285, "triumph_tiger_sport_660", "Triumph", "Tiger Sport 660 (Compact TFT + White LCD)", "2022+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            11250.0, 12500.0, false, false, "TRIUMPH // TIGER SPORT 660", listOf("Road", "Rain"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.SINGLE_UPPER_LED,
+            11250.0, 12500.0, true, false, "TRIUMPH // TIGER SPORT 660", listOf("Road", "Rain"),
             0xFF0B0E14, 0xFFFFFFFF, 0xFF06080C, 0xFFFFFFFF, 0xFFFF3D00,
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
         ),
@@ -2218,8 +2218,8 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             287, "triumph_speed_twin_1200_rs", "Triumph", "Speed Twin 1200 RS (Oblong Color TFT + LCD)", "2025+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8000.0, 9500.0, false, true, "SPEED TWIN 1200 RS", listOf("Sport", "Road"),
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CIRCULAR_RING_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
+            8250.0, 9500.0, true, true, "SPEED TWIN 1200 RS", listOf("Sport", "Road"),
             0xFF0C0E14, 0xFFFFFFFF, 0xFF07080C, 0xFFFFFFFF, 0xFFFF3D00,
             0xFFFF9100, 0xFFFF1744, 0xFFFFFFFF
         ),
@@ -2232,7 +2232,7 @@ object OemGaugeCatalog {
         ),
         DeclarativeGaugeSpec(
             289, "voge_rr525", "Voge", "RR 525 (5\" Track Data TFT)", "2024+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.SINGLE_UPPER_LED,
             10500.0, 12000.0, true, true, "VOGE // RR525", listOf("Sport", "Street"),
             0xFF0B0E16, 0xFFFFFFFF, 0xFF06080D, 0xFFFFFFFF, 0xFFE60012,
             0xFFFF9100, 0xFFE60012, 0xFFFFFFFF
@@ -2310,13 +2310,13 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             300, "cfmoto_800mt_explore", "CFMoto", "800MT Explore (8\" CarPlay Radar MMI)", "2024+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.PANORAMIC_SPLIT_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            9500.0, 11000.0, false, true, "CFMOTO // 800MT EXPLORE", listOf("CarPlay Split", "Adventure"),
+            9800.0, 11000.0, false, true, "CFMOTO // 800MT EXPLORE", listOf("CarPlay Split", "Adventure"),
             0xFF0A0E16, 0xFFFFFFFF, 0xFF05080D, 0xFFFFFFFF, 0xFF00B0FF,
             0xFFFF9100, 0xFFFF3D00, 0xFFFFFFFF
         ),
         DeclarativeGaugeSpec(
             301, "cfmoto_675nk", "CFMoto", "675NK (Triple 5\" Curved TFT)", "2025+",
-            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.NONE_INTERNAL_ONLY,
+            GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.CURVED_SWEEP_BAR_TFT, ShiftLedPattern.CONVERGING_5_LEDS,
             12000.0, 13500.0, true, true, "CFMOTO // 675NK TRIPLE", listOf("Sport", "Street"),
             0xFF0B0F18, 0xFFFFFFFF, 0xFF06090F, 0xFFFFFFFF, 0xFF00E5FF,
             0xFFFFAB00, 0xFF00E5FF, 0xFF06090F
@@ -2324,7 +2324,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             302, "hero_mavrick_440", "Hero", "Mavrick 440 (Negative Round-Bar LCD)", "2024+",
             GaugeDisplayCategory.NEGATIVE_POSITIVE_LCD, GaugeGeometryType.F1_DIGITAL_ARC_BAR, ShiftLedPattern.SINGLE_UPPER_LED,
-            6500.0, 8000.0, false, false, "HERO // MAVRICK 440", listOf("Street LCD"),
+            6800.0, 8000.0, false, false, "HERO // MAVRICK 440", listOf("Street LCD"),
             0xFF0B0E14, 0xFFFFFFFF, 0xFF06080D, 0xFFFFFFFF, 0xFFE60012,
             0xFFFFAB00, 0xFFE60012, 0xFFFFFFFF
         ),
@@ -2338,7 +2338,7 @@ object OemGaugeCatalog {
         DeclarativeGaugeSpec(
             304, "royal_enfield_guerrilla_450", "Royal Enfield", "Guerrilla 450 (4\" Round Tripper Dash TFT)", "2024+",
             GaugeDisplayCategory.MODERN_TFT, GaugeGeometryType.SINGLE_PUCK_ROUND_TFT_LCD, ShiftLedPattern.NONE_INTERNAL_ONLY,
-            8000.0, 9500.0, false, true, "ROYAL ENFIELD // GRR 450", listOf("Performance Map", "Digital"),
+            8500.0, 9500.0, false, true, "ROYAL ENFIELD // GRR 450", listOf("Performance Map", "Digital"),
             0xFF0C0E14, 0xFFFFFFFF, 0xFF07080C, 0xFFFFFFFF, 0xFFFFC107,
             0xFFFF6D00, 0xFFFF3D00, 0xFFFFFFFF
         ),

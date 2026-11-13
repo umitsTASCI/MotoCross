@@ -54,9 +54,14 @@ class AndroidHardwareSensorManager(
     private var lastGyroZ = 0.0
 
     private var themeOverrideMode: Int = 0 // 0: Auto Sensor, 1: Always Day, 2: Always Night
+    private var lastAmbientLux: Float = 1800f
     private var audioCaptureJob: Job? = null
 
-    // GNSS kalite ve outlier takibi
+    // GNSS kalite ve Çok-Katmanlı Hız Filtresi
+    @Volatile var stationaryDeadbandKmh: Double = 1.6
+    @Volatile var maxAllowedGpsErrorMeters: Float = 35.0f
+    private var lastValidLocation: Location? = null
+    private var warmupFixCount = 0
     private var lastGnssSpeedMs = -1.0
     private var lastGnssTimestampNanos = 0L
     private var lastGnssBearingDeg = 0.0
@@ -65,6 +70,13 @@ class AndroidHardwareSensorManager(
     private var visibleSatellites = 0
     private var usedSatellites = 0
     private var gnssStatusCallback: GnssStatus.Callback? = null
+    private var lastGpsFixElapsedMs = 0L
+    private var lastLocationProvider: String? = null
+
+    fun updateGpsFilterConfig(stationaryDeadbandKmh: Double, maxAccuracyMeters: Float) {
+        this.stationaryDeadbandKmh = stationaryDeadbandKmh.coerceIn(0.5, 8.0)
+        this.maxAllowedGpsErrorMeters = maxAccuracyMeters.coerceIn(8.0f, 60.0f)
+    }
 
     // 400 Hz IMU akışında ivmeölçer ana saat; jiroskop yalnızca son değeri günceller.
     // Böylece aynı örnek iki kez entegre edilmez (eski sürümdeki çift besleme hatası).
@@ -86,22 +98,40 @@ class AndroidHardwareSensorManager(
     }
 
     /**
-     * GNSS (Dahili GPS veya Harici Bluetooth 10Hz-25Hz GNSS) Doppler alıcısını başlatır.
+     * Yüksek frekanslı GNSS (GPS_PROVIDER + FUSED_PROVIDER + GnssStatus) alıcısını başlatır.
      */
     @SuppressLint("MissingPermission")
     fun startGnssUpdates() {
         try {
-            if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) return
+            warmupFixCount = 0
+            lastValidLocation = null
+            lastGnssSpeedMs = -1.0
+            lastGnssTimestampNanos = 0L
+            gnssOutlierCount = 0
+            lastGpsFixElapsedMs = 0L
+            lastLocationProvider = null
 
-            // 10 Hz hedef, minimum 100 ms: 25 Hz istemek pil tüketimini artırır ve
-            // çoğu telefonda zaten desteklenmez. Doppler hızı için 5-10 Hz yeterlidir.
-            locationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
-                100L,
-                0f,
-                this,
-                Looper.getMainLooper()
-            )
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                // 20 Hz'e kadar donanım GPS + Doppler hızı (desteklemeyen çipler 1-10 Hz'e düşer)
+                locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    50L,
+                    0f,
+                    this,
+                    Looper.getMainLooper()
+                )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                locationManager.isProviderEnabled(LocationManager.FUSED_PROVIDER)
+            ) {
+                locationManager.requestLocationUpdates(
+                    LocationManager.FUSED_PROVIDER,
+                    100L,
+                    0f,
+                    this,
+                    Looper.getMainLooper()
+                )
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && gnssStatusCallback == null) {
                 val callback = object : GnssStatus.Callback() {
@@ -130,7 +160,7 @@ class AndroidHardwareSensorManager(
         } catch (_: SecurityException) {
             // İzin verilmediyse sessizce geç
         } catch (_: Throwable) {
-            // Bazı üretici ROM'larında GnssStatus çağrısı patlayabilir; GPS akışı devam eder.
+            // Bazı üretici ROM'larında GnssStatus veya FUSED sağlayıcısı patlayabilir; GPS akışı devam eder.
         }
     }
 
@@ -149,22 +179,7 @@ class AndroidHardwareSensorManager(
                 AudioFormat.ENCODING_PCM_FLOAT
             ).coerceAtLeast(4096 * 4)
 
-            val recorder = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.UNPROCESSED,
-                    sampleRate,
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_FLOAT,
-                    minBufSize
-                )
-            } catch (_: Throwable) {
-                null
-            } ?: return@launch
-
-            if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-                recorder.release()
-                return@launch
-            }
+            val recorder = createBestAudioRecord(sampleRate, minBufSize) ?: return@launch
 
             val floatBuffer = FloatArray(1024)
             try {
@@ -195,6 +210,32 @@ class AndroidHardwareSensorManager(
         }
     }
 
+    @SuppressLint("MissingPermission")
+    private fun createBestAudioRecord(sampleRate: Int, minBufSize: Int): AudioRecord? {
+        val sources = intArrayOf(
+            MediaRecorder.AudioSource.UNPROCESSED,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.MIC
+        )
+        for (source in sources) {
+            try {
+                val rec = AudioRecord(
+                    source,
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_FLOAT,
+                    minBufSize
+                )
+                if (rec.state == AudioRecord.STATE_INITIALIZED) {
+                    return rec
+                }
+                rec.release()
+            } catch (_: Throwable) {
+            }
+        }
+        return null
+    }
+
     fun stopAcousticMicrophone() {
         audioCaptureJob?.cancel()
         audioCaptureJob = null
@@ -214,6 +255,10 @@ class AndroidHardwareSensorManager(
 
     fun setThemeOverrideMode(mode: Int) {
         themeOverrideMode = mode
+        try {
+            NativeTelemetryEngineBridge.nativeUpdateAmbientLight(lastAmbientLux, mode)
+        } catch (_: UnsatisfiedLinkError) {
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -242,6 +287,7 @@ class AndroidHardwareSensorManager(
             }
             Sensor.TYPE_LIGHT -> {
                 val lux = event.values[0]
+                lastAmbientLux = lux
                 NativeTelemetryEngineBridge.nativeUpdateAmbientLight(lux, themeOverrideMode)
             }
         }
@@ -249,21 +295,38 @@ class AndroidHardwareSensorManager(
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
+    /**
+     * Çok-Katmanlı Gerçek GPS Hız Filtresi + OOSM Gecikme Telafisi:
+     *  1. Yaş Kapısı: 3 sn'den eski veya zamanı geri giden paketler yoksayılır.
+     *  2. Yatay Doğruluk Kapısı: [maxAllowedGpsErrorMeters] üzeri zayıf fix reddedilir.
+     *  3. İlk Isınma Çapası + Haversine Yedeği: İlk pakette sıçrama önlenir; Doppler yoksa distanceTo/dt kullanılır.
+     *  4. Outlier ve Duruş Hata Çemberi: Fiziksel dışı sıçramalar ve park halindeki GPS drift'i sıfırlanır.
+     *  5. Duruş Ölü Bölgesi ([stationaryDeadbandKmh]): Düşük hız salınımları 0.0 km/h olarak sabitlenir.
+     */
     override fun onLocationChanged(location: Location) {
-        // 1) Yaş kontrolü: bayat fix'ler hızı geçmişe doğru çeker.
         val nowNs = SystemClock.elapsedRealtimeNanos()
-        val fixAgeSec = ((nowNs - location.elapsedRealtimeNanos) / 1_000_000_000.0)
-            .coerceIn(0.0, 10.0)
-        if (location.elapsedRealtimeNanos <= 0L || fixAgeSec > 3.0) return
+        val nowMs = SystemClock.elapsedRealtime()
+        val provider = location.provider ?: ""
 
-        // 2) Yatay doğruluk kapısı: 60 m üzeri fix bisiklet hızı için anlamsızdır.
+        // GPS_PROVIDER taze iken FUSED_PROVIDER paketlerini karıştırma; aksi halde
+        // iki farklı konum kaynağı aynı prevLoc çapasına girip sahte Haversine sıçraması üretir.
+        if (provider == LocationManager.GPS_PROVIDER) {
+            lastGpsFixElapsedMs = nowMs
+        } else if (lastGpsFixElapsedMs > 0L && (nowMs - lastGpsFixElapsedMs) < 2500L) {
+            return
+        }
+
+        val locNanos = if (location.elapsedRealtimeNanos > 0L) location.elapsedRealtimeNanos else nowNs
+        val fixAgeSec = ((nowNs - locNanos) / 1_000_000_000.0).coerceIn(0.0, 10.0)
+        if (fixAgeSec > 3.0 || locNanos <= lastGnssTimestampNanos) return
+
         val horizontalAccuracyM = if (location.hasAccuracy()) {
             location.accuracy.toDouble()
         } else {
             99.0
         }
         lastGnssHorizontalAccuracyM = horizontalAccuracyM
-        if (horizontalAccuracyM > 60.0) {
+        if (horizontalAccuracyM > maxAllowedGpsErrorMeters.toDouble()) {
             NativeTelemetryEngineBridge.nativeUpdateGnssStatus(
                 usedSatellites,
                 horizontalAccuracyM
@@ -271,43 +334,66 @@ class AndroidHardwareSensorManager(
             return
         }
 
-        // 3) Doppler hızı yoksa manyetik burun/konum türeviyle uydurma yapma.
-        if (!location.hasSpeed()) return
+        // Sağlayıcı değiştiyse (ör. GPS ↔ Fused geçişi) konum çapasını temizle.
+        val providerSwitched = lastLocationProvider != null && lastLocationProvider != provider
+        val prevLoc = if (providerSwitched) null else lastValidLocation
+        lastLocationProvider = provider
+        lastValidLocation = location
+        warmupFixCount = if (providerSwitched) 1 else warmupFixCount + 1
 
-        var speedMs = location.speed.toDouble()
-        if (!speedMs.isFinite() || speedMs < 0.0 || speedMs > 100.0) return
+        if (prevLoc == null || warmupFixCount < 2) {
+            // İlk pakette yalnızca konum çapası kur; sahte başlangıç sıçramasını engelle.
+            lastGnssTimestampNanos = locNanos
+            NativeTelemetryEngineBridge.nativeUpdateGnssStatus(usedSatellites, horizontalAccuracyM)
+            return
+        }
+
+        val prevNanos = if (prevLoc.elapsedRealtimeNanos > 0L) prevLoc.elapsedRealtimeNanos else locNanos
+        val dtSec = ((locNanos - prevNanos) / 1_000_000_000.0).coerceIn(0.02, 5.0)
+        val distanceMeters = prevLoc.distanceTo(location).toDouble()
+        val haversineSpeedMs = distanceMeters / dtSec
+
+        var speedMs = if (location.hasSpeed()) {
+            location.speed.toDouble()
+        } else {
+            haversineSpeedMs
+        }
+        if (!speedMs.isFinite() || speedMs < 0.0 || speedMs > 105.0) return
 
         val speedAccMs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             location.hasSpeedAccuracy()
         ) {
             location.speedAccuracyMetersPerSecond.toDouble().coerceIn(0.05, 20.0)
-        } else {
-            // Eski API'lerde Doppler doğruluğu yok; muhafazakâr varsayım.
+        } else if (location.hasSpeed()) {
             0.35
+        } else {
+            0.65
         }
 
-        // 4) Outlier kapısı: fiziksel olarak mümkün olmayan sıçramaları reddet.
-        val dtSec = if (lastGnssTimestampNanos > 0L) {
-            ((location.elapsedRealtimeNanos - lastGnssTimestampNanos) / 1_000_000_000.0)
-                .coerceIn(0.02, 5.0)
-        } else {
-            0.2
-        }
+        // Outlier kapısı: fiziksel olarak mümkün olmayan ani GPS sıçramalarını reddet.
         val plausibleDelta = 1.5 + 14.0 * dtSec + 3.0 * speedAccMs
         if (lastGnssSpeedMs >= 0.0 && abs(speedMs - lastGnssSpeedMs) > plausibleDelta) {
             gnssOutlierCount++
-            // Tek tük GPS sıçraması reddedilir; 4 ardışık tutarlı örnek gerçeği yener.
             if (gnssOutlierCount < 4) return
         } else {
             gnssOutlierCount = 0
         }
 
-        // 5) Duruş ölü bandı: GPS sıfır civarında salınır, ekranda 0-1 km/h titremesin.
-        if (speedMs < 0.45 && speedAccMs < 2.5) {
+        // Duruş hata çemberi: park halindeyken konum hata çemberi içinde gezinmeyi sıfırla.
+        val minRealMovementMeters = max(1.6, horizontalAccuracyM * 0.32)
+        if (distanceMeters < minRealMovementMeters && speedMs < 2.0) {
+            speedMs = 0.0
+        }
+        if (distanceMeters < 1.2 && speedMs < 3.5 && haversineSpeedMs < 0.7) {
             speedMs = 0.0
         }
 
-        // 6) Burun açısı: düşük hızda ve bearing'siz fix'lerde son geçerli yönü koru.
+        // Duruş ölü bandı (kullanıcı ayarına göre varsayılan 1.6 km/h).
+        val deadbandMs = stationaryDeadbandKmh / 3.6
+        if (speedMs < deadbandMs) {
+            speedMs = 0.0
+        }
+
         val bearingValid = location.hasBearing() && speedMs > 0.6
         if (bearingValid) {
             lastGnssBearingDeg = location.bearing.toDouble()
@@ -317,7 +403,7 @@ class AndroidHardwareSensorManager(
         val vEastMs = speedMs * sin(bearingRad)
 
         NativeTelemetryEngineBridge.nativeIngestGnssDoppler(
-            timestampNanos = location.elapsedRealtimeNanos,
+            timestampNanos = locNanos,
             vNorthMs = vNorthMs,
             vEastMs = vEastMs,
             vDownMs = 0.0,
@@ -330,7 +416,7 @@ class AndroidHardwareSensorManager(
         )
 
         lastGnssSpeedMs = speedMs
-        lastGnssTimestampNanos = location.elapsedRealtimeNanos
+        lastGnssTimestampNanos = locNanos
     }
 
     @Deprecated("Deprecated in Java")

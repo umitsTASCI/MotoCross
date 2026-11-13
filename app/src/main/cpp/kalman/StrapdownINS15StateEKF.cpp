@@ -31,6 +31,7 @@ void StrapdownINS15StateEKF::reset() noexcept {
     P_v_bax_ = 0.0;
     P_v_pitch_ = 0.0;
     lastTrueAxMs2_ = 0.0;
+    stationaryResidualAxMs2_ = 0.0;
     prevTrueAxMs2_ = 0.0;
     lastTrueAyMs2_ = 0.0;
     filteredJerkXMs3_ = 0.0;
@@ -146,12 +147,17 @@ void StrapdownINS15StateEKF::propagateSingleStep(
 
     // -------------------------------------------------------------------------
     // Bölüm 2.2: Yokuş eğimi (phi_pitch) ve sensör sapması (b_ax) arındırılmış
-    // gerçek ileri ivme. Motorsiklet için fiziksel ivme sınırı ±5 m/s²'dir;
-    // bunun üzerindeki değerler sensör darbesi/kötü montaj olarak kırpılır.
+    // gerçek ileri ivme. Supersport kalkış/sert fren ±11.5 m/s² (~1.17g) desteklenir.
     // -------------------------------------------------------------------------
-    double axTrue = accelBike.x - GRAVITY_MPS2 * std::sin(state_[7]) - state_[9];
-    axTrue = std::clamp(axTrue, -5.0, 5.0);
-    const double ayTrue = std::clamp(accelBike.y - state_[10], -8.0, 8.0);
+    const double rawUnbiasedAx = accelBike.x - GRAVITY_MPS2 * std::sin(state_[7]) - state_[9];
+    double axTrue = std::clamp(rawUnbiasedAx, -11.5, 11.5);
+    const double ayTrue = std::clamp(accelBike.y - state_[10], -12.0, 12.0);
+
+    if (isStationary) {
+        stationaryResidualAxMs2_ = 0.90 * stationaryResidualAxMs2_ + 0.10 * std::clamp(rawUnbiasedAx, -2.0, 2.0);
+    } else {
+        stationaryResidualAxMs2_ = 0.0;
+    }
 
     if (stationary_) {
         axTrue = 0.0;
@@ -291,9 +297,8 @@ void StrapdownINS15StateEKF::updateGnssDopplerOosm(
         gnssSpeedMs_ = 0.0;
         state_[3] = 0.0;
         // Dururken ivmeölçer sapmasını yavaşça öğren (mount açısı hatasını azaltır).
-        // axTrue > 0 iken sapma tahminini artırmak, g sin(phi) arındırmasının kalan
-        // ofsetini sıfıra çeker; işaret pozitif yöndedir.
-        state_[9] = std::clamp(state_[9] + lastTrueAxMs2_ * 0.002, -1.5, 1.5);
+        // ZUPT axTrue'yu sıfırlasa bile korunan durağan artık ivme kullanılır.
+        state_[9] = std::clamp(state_[9] + stationaryResidualAxMs2_ * 0.02, -1.5, 1.5);
         return;
     }
 

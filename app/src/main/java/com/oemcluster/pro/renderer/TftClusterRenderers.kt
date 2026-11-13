@@ -489,7 +489,7 @@ private fun DrawScope.drawBondedTachEvo(ctx: GaugeContext) {
     )
 
     // Menzil — gerçek KTM'de sol alt blok (MPH modunda birim dönüştürülür)
-    val rangeValue = DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()
+    val rangeValue = DistanceFormatter.value(ctx.computedRangeKm, ctx.useMph).roundToInt()
     gText("RANGE", ctx.w * 0.045f, ctx.h * 0.655f, ctx.u * 1.50f, p.muted,
         Paint.Align.LEFT, ctx.type.label, true, spacing = 0.16f)
     drawSpeed(
@@ -611,8 +611,7 @@ private fun DrawScope.drawHorizontalEvo(ctx: GaugeContext) {
         ctx.w * 0.470f, ctx.h * 0.668f, ctx.u * 31.0f,
         p.fg, p.muted, ctx.type.digits
     )
-    val rangeText = "${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}"
-    gText("RANGE $rangeText", ctx.w * 0.470f, ctx.h * 0.748f, ctx.u * 2.0f, p.accent,
+    gText("RANGE ${ctx.formatRange()}", ctx.w * 0.470f, ctx.h * 0.748f, ctx.u * 2.0f, p.accent,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.10f)
 
     // Vites — gerçek Panigale track ekranında kutusuz dev rakam.
@@ -628,7 +627,7 @@ private fun DrawScope.drawHorizontalEvo(ctx: GaugeContext) {
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.22f)
 
     // Sağ kolon — sürüş elektroniği seviyeleri (Ducati track görünümü).
-    gText("DTC 3   DWC 2   ABS 2", ctx.w * 0.800f, ctx.h * 0.678f, ctx.u * 1.70f, p.fg.copy(alpha = 0.75f),
+    gText("TC ${if (t.tractionControlInterventionActive) "ACT" else "ON"}  •  WHL ${t.wheelieAngleDeg.roundToInt()}°  •  ${ctx.formatBattery()}", ctx.w * 0.800f, ctx.h * 0.678f, ctx.u * 1.55f, p.fg.copy(alpha = 0.75f),
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.06f)
     gText("RIDE MODE", ctx.w * 0.800f, ctx.h * 0.748f, ctx.u * 1.35f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.18f)
@@ -680,8 +679,7 @@ private fun DrawScope.drawCompactEvo(ctx: GaugeContext) {
     gText("GEAR", ctx.w * 0.5f, ctx.h * 0.675f, ctx.u * 1.5f, p.muted,
         Paint.Align.CENTER, ctx.type.label, true, spacing = 0.20f)
 
-    val rangeText = "${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}"
-    gText("RANGE $rangeText   •   ${ctx.subMode.uppercase()}", ctx.w * 0.5f, ctx.h * 0.725f,
+    gText("RANGE ${ctx.formatRange()}   •   ${ctx.subMode.uppercase()}", ctx.w * 0.5f, ctx.h * 0.725f,
         ctx.u * 1.75f, p.accent, Paint.Align.CENTER, ctx.type.label, true, spacing = 0.08f)
     gText("FUEL ${(t.fuelLevelRatio * 100).roundToInt()}%   •   ${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}",
         ctx.w * 0.5f, ctx.h * 0.765f, ctx.u * 1.55f, p.muted,
@@ -1028,7 +1026,7 @@ internal fun DrawScope.drawRallyTower(ctx: GaugeContext) {
         gText("${(t.fuelLevelRatio * 100).roundToInt()}%", leftPanelX + panelW * 0.12f, ctx.h * 0.30f, ctx.u * 4.0f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
         drawLinearBar(leftPanelX + panelW * 0.12f, ctx.h * 0.32f, panelW * 0.70f, ctx.u * 1.2f, t.fuelLevelRatio, p.accent, p.track, 0.9f, RL_RED, ctx.u * 0.6f)
         gText("RANGE", leftPanelX + panelW * 0.12f, ctx.h * 0.39f, ctx.u * 1.4f, p.muted, Paint.Align.LEFT, ctx.type.label, true, spacing = 0.12f)
-        gText("${DistanceFormatter.value(t.fuelLevelRatio * 380.0, ctx.useMph).roundToInt()} ${DistanceFormatter.unit(ctx.useMph)}", leftPanelX + panelW * 0.12f, ctx.h * 0.45f, ctx.u * 3.1f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
+        gText(ctx.formatRange(), leftPanelX + panelW * 0.12f, ctx.h * 0.45f, ctx.u * 3.1f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
         gText("${formatTemp(t.coolantTempCelsius, ctx.useFahrenheit)}", leftPanelX + panelW * 0.12f, ctx.h * 0.52f, ctx.u * 2.6f, p.accent, Paint.Align.LEFT, ctx.type.digits, true)
         gText("${t.gpsSatelliteCount} SAT  •  ${t.gpsHorizontalAccuracyM.roundToInt()} m", leftPanelX + panelW * 0.12f, ctx.h * 0.57f, ctx.u * 1.3f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
 
@@ -1112,7 +1110,7 @@ internal fun DrawScope.drawPanoramicSplit(ctx: GaugeContext) {
         }
         drawPath(route, p.accent, style = Stroke(width = ctx.u * 0.9f, cap = StrokeCap.Round))
         drawCircle(p.accent, ctx.u * 1.0f, Offset(ctx.w * 0.235f, mapTop + mapH * 0.10f))
-        gText(if (adventure) "TET SECTOR 4" else "ALPS ROUTE", ctx.w * 0.045f, mapTop + mapH + ctx.u * 3.0f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
+        gText(if (adventure) "SAT ${t.gpsSatelliteCount}  •  ±${t.gpsHorizontalAccuracyM.roundToInt()}m" else "AVG ${ctx.formatAvgSpeed()}  •  ${ctx.formatRange()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 3.0f, ctx.u * 1.6f, p.fg, Paint.Align.LEFT, ctx.type.label, true)
         gText("ODO  ${ctx.formatOdometer()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 6.0f, ctx.u * 1.85f, p.fg, Paint.Align.LEFT, ctx.type.digits, true)
         gText("TRIP A  ${ctx.formatTrip()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 8.8f, ctx.u * 1.65f, p.accent, Paint.Align.LEFT, ctx.type.label, true)
         gText("SEANS  ${ctx.formatSession()}", ctx.w * 0.045f, mapTop + mapH + ctx.u * 11.4f, ctx.u * 1.50f, p.muted, Paint.Align.LEFT, ctx.type.label, true)
@@ -1232,7 +1230,7 @@ internal fun DrawScope.drawPolylineBar(
     }
 }
 
-private fun pointAndNormalAt(points: List<Offset>, t: Float): Pair<Offset, Offset> {
+internal fun pointAndNormalAt(points: List<Offset>, t: Float): Pair<Offset, Offset> {
     if (points.size < 2) return (points.firstOrNull() ?: Offset.Zero) to Offset(0f, -1f)
     val lengths = FloatArray(points.size - 1)
     var total = 0f
@@ -1262,4 +1260,4 @@ private fun pointAndNormalAt(points: List<Offset>, t: Float): Pair<Offset, Offse
     return points.last() to Offset(0f, -1f)
 }
 
-private fun pointAt(points: List<Offset>, t: Float): Offset = pointAndNormalAt(points, t).first
+internal fun pointAt(points: List<Offset>, t: Float): Offset = pointAndNormalAt(points, t).first

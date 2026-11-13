@@ -12,11 +12,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import com.oemcluster.pro.catalog.DeclarativeGaugeSpec
 import com.oemcluster.pro.catalog.GaugeDisplayCategory
 import com.oemcluster.pro.catalog.ShiftLedPattern
+import com.oemcluster.pro.domain.BikeMechanicalProfile
 import com.oemcluster.pro.domain.ShiftLightState
 import com.oemcluster.pro.domain.UnifiedTelemetryState
 import com.oemcluster.pro.runtime.DistanceFormatter
@@ -167,6 +169,16 @@ internal class GaugeContext(
     val odometerKm: Double,
     val sessionKm: Double = 0.0,
     val tripBKm: Double = 0.0,
+    val showStatusRail: Boolean = true,
+    val chromaKey: Boolean = false,
+    val activeBike: BikeMechanicalProfile? = null,
+    val best0to60Sec: Double = 0.0,
+    val best0to100Sec: Double = 0.0,
+    val peakSpeedKmh: Double = 0.0,
+    val peakLeanLeftDeg: Double = 0.0,
+    val peakLeanRightDeg: Double = 0.0,
+    val avgSpeedKmh: Double = 0.0,
+    val rideTimeSeconds: Double = 0.0,
     val w: Float,
     val h: Float
 ) {
@@ -179,6 +191,24 @@ internal class GaugeContext(
     val subMode: String = spec.availableSubModes.getOrElse(subModeIndex) {
         spec.availableSubModes.firstOrNull() ?: "OEM"
     }
+
+    val tankCapacityLiters: Double = (activeBike?.fuelTankCapacityLiters ?: 15.0).coerceAtLeast(5.0)
+    val avgFuelL100Km: Double = (activeBike?.avgFuelConsumptionLPer100Km ?: 5.2).coerceIn(1.5, 16.0)
+    val fullTankRangeKm: Double = (tankCapacityLiters / avgFuelL100Km) * 100.0
+    val computedRangeKm: Double = fullTankRangeKm * telemetry.fuelLevelRatio.toDouble().coerceIn(0.0, 1.0)
+    val instantFuelL100Km: Double
+        get() {
+            if (telemetry.actualEngineRpm < 300.0 || telemetry.trueSpeedKmh < 3.0) return 0.0
+            val refPower = max(15.0, activeBike?.maxPowerHp ?: 90.0)
+            val powerLoad = (telemetry.estimatedWheelHorsepower / refPower).coerceIn(0.0, 0.85)
+            return (avgFuelL100Km * (0.48 + 0.82 * rpmRatio.coerceIn(0f, 1.1f) + powerLoad)).coerceIn(1.5, 19.9)
+        }
+    val estimatedBatteryVolts: Double
+        get() = when {
+            telemetry.actualEngineRpm >= 1800.0 -> (13.8 + rpmRatio.coerceIn(0f, 1f) * 0.5).coerceIn(13.8, 14.3)
+            telemetry.actualEngineRpm >= 400.0 -> 13.4
+            else -> 12.6
+        }
 
     val speedScaleMax: Int = estimateSpeedScale(spec, speedValue)
     val rpmLabelStep: Double = when {
@@ -203,6 +233,45 @@ internal class GaugeContext(
 
     /** Uygulama açıldığından beri biriken seans mesafesi. */
     fun formatSession(): String = DistanceFormatter.format(sessionKm, useMph)
+
+    /** Aktif depo ve yakıt tüketiminden hesaplanan gerçek kalan menzil. */
+    fun formatRange(): String {
+        val dist = if (useMph) computedRangeKm * DistanceFormatter.KM_TO_MILE else computedRangeKm
+        val unit = if (useMph) "MI" else "KM"
+        return "${dist.roundToInt()} $unit"
+    }
+
+    /** Anlık veya ortalama yakıt tüketimi (seçili birimle). */
+    fun formatInstantFuel(): String =
+        if (telemetry.actualEngineRpm < 300.0 || telemetry.trueSpeedKmh < 3.0) "--.-"
+        else formatFuelConsumption(instantFuelL100Km, fuelUnitCode)
+
+    fun formatAvgFuel(): String = formatFuelConsumption(avgFuelL100Km, fuelUnitCode)
+
+    fun formatBattery(): String = String.format(java.util.Locale.US, "%.1f V", estimatedBatteryVolts)
+
+    fun formatBest0to60(): String =
+        if (best0to60Sec > 0.05) String.format(java.util.Locale.US, "%.2f s", best0to60Sec) else "--.-- s"
+
+    fun formatBest0to100(): String =
+        if (best0to100Sec > 0.05) String.format(java.util.Locale.US, "%.2f s", best0to100Sec) else "--.-- s"
+
+    fun formatPeakSpeed(): String {
+        val v = if (useMph) (peakSpeedKmh * DistanceFormatter.KM_TO_MILE).roundToInt() else peakSpeedKmh.roundToInt()
+        return "$v ${speedUnit.uppercase()}"
+    }
+
+    fun formatAvgSpeed(): String {
+        val v = if (useMph) (avgSpeedKmh * DistanceFormatter.KM_TO_MILE).roundToInt() else avgSpeedKmh.roundToInt()
+        return "$v ${speedUnit.uppercase()}"
+    }
+
+    fun formatRideTime(): String {
+        val mins = (rideTimeSeconds / 60.0).toInt().coerceAtLeast(0)
+        val hrs = (mins / 60).coerceAtMost(99)
+        val rem = mins % 60
+        return String.format(java.util.Locale.US, "%02d:%02d", hrs, rem)
+    }
 }
 
 internal fun estimateSpeedScale(spec: DeclarativeGaugeSpec, currentSpeed: Int): Int {
@@ -621,7 +690,8 @@ internal fun DrawScope.drawGearPod(
     }
     val fg = when {
         neutral -> RL_GREEN
-        telemetry.shiftLightState != ShiftLightState.NORMAL -> Color.White
+        telemetry.shiftLightState != ShiftLightState.NORMAL ->
+            if (bg.luminance() > 0.55f) Color(0xFF090C12) else Color.White
         else -> palette.fg
     }
     val edge = when {
@@ -754,10 +824,10 @@ internal fun DrawScope.drawBrandMark(
         "Honda" -> {
             val p = Path()
             p.moveTo(cx - size * 0.58f, cy + size * 0.10f)
-            p.quadraticBezierTo(cx - size * 0.22f, cy - size * 0.42f, cx + size * 0.12f, cy - size * 0.20f)
-            p.quadraticBezierTo(cx + size * 0.42f, cy - size * 0.02f, cx + size * 0.60f, cy - size * 0.26f)
-            p.quadraticBezierTo(cx + size * 0.36f, cy + size * 0.34f, cx - size * 0.06f, cy + size * 0.22f)
-            p.quadraticBezierTo(cx - size * 0.36f, cy + size * 0.14f, cx - size * 0.58f, cy + size * 0.10f)
+            p.quadraticTo(cx - size * 0.22f, cy - size * 0.42f, cx + size * 0.12f, cy - size * 0.20f)
+            p.quadraticTo(cx + size * 0.42f, cy - size * 0.02f, cx + size * 0.60f, cy - size * 0.26f)
+            p.quadraticTo(cx + size * 0.36f, cy + size * 0.34f, cx - size * 0.06f, cy + size * 0.22f)
+            p.quadraticTo(cx - size * 0.36f, cy + size * 0.14f, cx - size * 0.58f, cy + size * 0.10f)
             p.close()
             drawPath(p, tint)
         }
@@ -797,10 +867,10 @@ internal fun DrawScope.drawBrandMark(
         "Suzuki" -> {
             val p = Path()
             p.moveTo(cx - size * 0.46f, cy - size * 0.42f)
-            p.quadraticBezierTo(cx + size * 0.22f, cy - size * 0.34f, cx + size * 0.32f, cy - size * 0.02f)
-            p.quadraticBezierTo(cx + size * 0.40f, cy + size * 0.34f, cx - size * 0.08f, cy + size * 0.40f)
-            p.quadraticBezierTo(cx - size * 0.50f, cy + size * 0.44f, cx - size * 0.52f, cy + size * 0.10f)
-            p.quadraticBezierTo(cx - size * 0.52f, cy - size * 0.10f, cx - size * 0.20f, cy - size * 0.06f)
+            p.quadraticTo(cx + size * 0.22f, cy - size * 0.34f, cx + size * 0.32f, cy - size * 0.02f)
+            p.quadraticTo(cx + size * 0.40f, cy + size * 0.34f, cx - size * 0.08f, cy + size * 0.40f)
+            p.quadraticTo(cx - size * 0.50f, cy + size * 0.44f, cx - size * 0.52f, cy + size * 0.10f)
+            p.quadraticTo(cx - size * 0.52f, cy - size * 0.10f, cx - size * 0.20f, cy - size * 0.06f)
             drawPath(p, tint, style = Stroke(width = u * 1.25f, cap = StrokeCap.Round))
         }
         "Aprilia" -> {
@@ -970,10 +1040,24 @@ internal fun DrawScope.drawShiftLeds(
     when (spec.shiftLedPattern) {
         ShiftLedPattern.NONE_INTERNAL_ONLY -> Unit
         ShiftLedPattern.SINGLE_UPPER_LED -> {
-            val on = stage != ShiftLightState.NORMAL && flashOn
-            if (on) drawCircle(palette.stage1.copy(alpha = 0.24f), u * 3.4f, Offset(cx, cy))
-            drawCircle(if (on) Color.White else palette.fg.copy(alpha = 0.13f), u * 1.55f, Offset(cx, cy))
-            if (on) drawCircle(Color.White.copy(alpha = 0.85f), u * 0.72f, Offset(cx, cy))
+            val isStage1 = stage == ShiftLightState.STAGE_1_APPROACHING
+            val isStage2 = stage == ShiftLightState.STAGE_2_SHIFT_NOW
+            val isOverRev = stage == ShiftLightState.OVER_REV_LIMITER
+            val on = isStage1 || ((isStage2 || isOverRev) && flashOn)
+            val glowColor = when {
+                isOverRev -> RL_RED
+                isStage2 -> Color.White
+                else -> palette.stage1
+            }
+            val coreColor = when {
+                isOverRev -> if (flashOn) Color.White else RL_RED.copy(alpha = 0.25f)
+                isStage2 -> if (flashOn) Color.White else palette.stage1.copy(alpha = 0.22f)
+                isStage1 -> palette.stage1
+                else -> palette.fg.copy(alpha = 0.13f)
+            }
+            if (on) drawCircle(glowColor.copy(alpha = if (isStage1) 0.22f else 0.34f), u * 3.4f, Offset(cx, cy))
+            drawCircle(coreColor, u * 1.55f, Offset(cx, cy))
+            if (on) drawCircle(Color.White.copy(alpha = if (isStage1) 0.55f else 0.90f), u * 0.72f, Offset(cx, cy))
         }
         ShiftLedPattern.CONVERGING_5_LEDS -> {
             val gap = span / 6f
@@ -1130,6 +1214,7 @@ internal fun DrawScope.drawStatusRail(
     ctx: GaugeContext,
     style: RailStyle = RailStyle.TFT
 ) {
+    if (!ctx.showStatusRail) return
     val p = ctx.palette
     val t = ctx.telemetry
     val railH = if (style == RailStyle.CLASSIC) ctx.h * 0.088f else ctx.h * 0.082f
@@ -1163,7 +1248,7 @@ internal fun DrawScope.drawStatusRail(
     iconX += iconR * 2.2f
     drawHeadlightIcon(iconX, cy, iconR, if (t.nightModeTransitionFactor > 0.5f) Color(0xFF4DA3FF) else p.fg.copy(alpha = 0.36f))
     iconX += iconR * 2.2f
-    drawOilIcon(iconX, cy, iconR, if (t.actualEngineRpm > 0) RL_AMBER else p.fg.copy(alpha = 0.30f))
+    drawOilIcon(iconX, cy, iconR, if (t.actualEngineRpm in 1.0..450.0) RL_AMBER else p.fg.copy(alpha = 0.30f))
     iconX += iconR * 2.3f
 
     if (t.tractionControlInterventionActive) {
@@ -1299,9 +1384,9 @@ private fun DrawScope.drawHeadlightIcon(x: Float, y: Float, r: Float, color: Col
 private fun DrawScope.drawOilIcon(x: Float, y: Float, r: Float, color: Color) {
     val p = Path()
     p.moveTo(x - r * 0.15f, y - r * 0.95f)
-    p.quadraticBezierTo(x + r * 0.95f, y + r * 0.1f, x + r * 0.5f, y + r * 0.75f)
-    p.quadraticBezierTo(x, y + r * 1.2f, x - r * 0.5f, y + r * 0.75f)
-    p.quadraticBezierTo(x - r * 0.95f, y + r * 0.1f, x - r * 0.15f, y - r * 0.95f)
+    p.quadraticTo(x + r * 0.95f, y + r * 0.1f, x + r * 0.5f, y + r * 0.75f)
+    p.quadraticTo(x, y + r * 1.2f, x - r * 0.5f, y + r * 0.75f)
+    p.quadraticTo(x - r * 0.95f, y + r * 0.1f, x - r * 0.15f, y - r * 0.95f)
     p.close()
     drawPath(p, color, style = Stroke(width = r * 0.24f))
 }
@@ -1422,6 +1507,72 @@ internal fun DrawScope.drawPanel(
         Size(width, height),
         androidx.compose.ui.geometry.CornerRadius(r, r),
         style = Stroke(width = max(1f, r * 0.08f))
+    )
+}
+
+internal fun DrawScope.drawPanel(
+    left: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+    fillColor: Color,
+    borderColor: Color,
+    radius: Float = 0f
+) {
+    val r = if (radius > 0f) radius else min(width, height) * 0.06f
+    drawRoundRect(
+        fillColor,
+        Offset(left, top),
+        Size(width, height),
+        androidx.compose.ui.geometry.CornerRadius(r, r)
+    )
+    drawRoundRect(
+        borderColor,
+        Offset(left, top),
+        Size(width, height),
+        androidx.compose.ui.geometry.CornerRadius(r, r),
+        style = Stroke(width = max(1f, r * 0.09f))
+    )
+}
+
+internal fun DrawScope.drawGearBadge(
+    gearText: String,
+    isNeutral: Boolean,
+    cx: Float,
+    cy: Float,
+    size: Float,
+    accent: Color,
+    fg: Color,
+    family: String = "sans-serif-condensed"
+) {
+    val bg = if (isNeutral) RL_GREEN.copy(alpha = 0.16f) else accent.copy(alpha = 0.14f)
+    val edge = if (isNeutral) RL_GREEN.copy(alpha = 0.72f) else accent.copy(alpha = 0.60f)
+    val textCol = if (isNeutral) RL_GREEN else fg
+    val boxW = size * 1.12f
+    val boxH = size * 1.06f
+    val rad = size * 0.14f
+    drawRoundRect(
+        bg,
+        Offset(cx - boxW * 0.5f, cy - boxH * 0.5f),
+        Size(boxW, boxH),
+        androidx.compose.ui.geometry.CornerRadius(rad, rad)
+    )
+    drawRoundRect(
+        edge,
+        Offset(cx - boxW * 0.5f, cy - boxH * 0.5f),
+        Size(boxW, boxH),
+        androidx.compose.ui.geometry.CornerRadius(rad, rad),
+        style = Stroke(width = max(1.2f, size * 0.045f))
+    )
+    gText(
+        text = if (isNeutral) "N" else gearText,
+        x = cx,
+        y = cy + size * 0.35f,
+        size = size * 0.86f,
+        color = textCol,
+        align = Paint.Align.CENTER,
+        family = family,
+        bold = true
     )
 }
 

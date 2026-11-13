@@ -72,7 +72,8 @@ data class ClusterPreferences(
     // Yol bilgisayarı ve rekorlar
     val tripAKm: Double = 0.0,
     val tripBKm: Double = 0.0,
-    val odometerKm: Double = 1420.5,
+    val odometerKm: Double = 0.0,
+    val fuelLevelRatio: Float = 0.78f,
     val peakSpeedKmh: Double = 0.0,
     val peakRpm: Double = 0.0,
     val peakLeanLeftDeg: Double = 0.0,
@@ -83,9 +84,18 @@ data class ClusterPreferences(
     val rideTimeSeconds: Double = 0.0,
 
     // Drag / hızlanma ölçümleri (en iyi dereceler)
+    val best0to60Sec: Double = 0.0,
     val best0to100Sec: Double = 0.0,
     val best0to200Sec: Double = 0.0,
     val bestQuarterMileSec: Double = 0.0,
+
+    // Gelişmiş GPS hız filtresi, ses ve kadran görünüm ayarları
+    val stationaryDeadbandKmh: Float = 1.6f,
+    val maxAllowedGpsErrorMeters: Float = 35.0f,
+    val shiftBeepVolume: Int = 80,
+    val showStatusRail: Boolean = true,
+    // 0: Otomatik (sensör), 1: Sabit yatay (varsayılan — motosiklet kadranı), 2: Sabit dikey
+    val screenOrientationMode: Int = 1,
 
     // İlk açılış ipucu
     val onboardingSeen: Boolean = false

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
@@ -29,6 +30,7 @@ import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -87,7 +89,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * MotoCross Kontrol Merkezi — garaj, 270 gösterge galerisi, ayarlar,
+ * MotoCross Kontrol Merkezi — garaj, OEM gösterge galerisi, ayarlar,
  * sürüş verileri ve canlı simülatör tek bir kokpit panelinde.
  */
 @Composable
@@ -102,6 +104,7 @@ fun ControlCenterScreen(
     rideRevision: Int,
     simulation: SimulationController,
     initialTab: Int,
+    onTabChange: (Int) -> Unit = {},
     onClose: () -> Unit,
     onSelectGauge: (Int) -> Unit,
     onSelectBike: (String) -> Unit,
@@ -129,7 +132,10 @@ fun ControlCenterScreen(
             currentSpec = currentSpec,
             language = language,
             tab = tab,
-            onTab = { tab = it },
+            onTab = {
+                tab = it
+                onTabChange(it)
+            },
             onClose = onClose
         )
 
@@ -150,6 +156,8 @@ fun ControlCenterScreen(
                 )
                 1 -> GalleryTab(
                     prefs = prefs,
+                    activeBike = activeBike,
+                    session = session,
                     language = language,
                     onSelectGauge = onSelectGauge,
                     onToggleFavorite = { skinId ->
@@ -162,6 +170,8 @@ fun ControlCenterScreen(
                 )
                 2 -> SettingsTab(
                     prefs = prefs,
+                    session = session,
+                    useMph = prefs.useMph,
                     onPrefsChange = onPrefsChange,
                     telemetry = liveTelemetry,
                     language = language,
@@ -185,7 +195,9 @@ fun ControlCenterScreen(
                     simulation = simulation,
                     activeBike = activeBike,
                     spec = currentSpec,
-                    prefs = prefs
+                    prefs = prefs,
+                    session = session,
+                    language = language
                 )
             }
         }
@@ -202,67 +214,87 @@ private fun ControlCenterHeader(
     onTab: (Int) -> Unit,
     onClose: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(CcColors.panel, lerp(CcColors.bg, Color.Black, 0.35f))
-                )
-            )
-            .padding(horizontal = 14.dp, vertical = 11.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(40.dp)
-                    .background(
-                        Brush.verticalGradient(listOf(CcColors.orange, CcColors.orange.copy(alpha = 0.35f))),
-                        RoundedCornerShape(2.dp)
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val compactHeader = maxWidth < 620.dp
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(CcColors.panel, lerp(CcColors.bg, Color.Black, 0.35f))
                     )
-            )
-            Spacer(Modifier.width(10.dp))
-            UstlabsAtomMark(
-                modifier = Modifier.size(34.dp),
-                reveal = 1f
-            )
-            Spacer(Modifier.width(9.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "MOTOCROSS",
-                    color = CcColors.text,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp,
-                    letterSpacing = 2.sp
                 )
-                Text(
-                    text = "USTLABS  ·  CONTROL CENTER  ·  270 OEM CLUSTERS  ·  VIRTUAL ECU",
-                    color = CcColors.muted,
-                    fontSize = 9.5.sp,
-                    letterSpacing = 1.sp
-                )
-            }
-            ActiveBikeBadge(activeBike)
-            Spacer(Modifier.width(10.dp))
-            Surface(
-                color = Color(0xFF2A0E12),
-                shape = RoundedCornerShape(9.dp),
-                border = BorderStroke(1.dp, CcColors.red.copy(alpha = 0.55f)),
-                modifier = Modifier.clickable { onClose() }
+                .padding(horizontal = 14.dp, vertical = 11.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "✕  KADRAJA DÖN",
-                    color = Color(0xFFFF8A80),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(40.dp)
+                        .background(
+                            Brush.verticalGradient(listOf(CcColors.orange, CcColors.orange.copy(alpha = 0.35f))),
+                            RoundedCornerShape(2.dp)
+                        )
                 )
+                Spacer(Modifier.width(10.dp))
+                UstlabsAtomMark(
+                    modifier = Modifier.size(34.dp),
+                    reveal = 1f
+                )
+                Spacer(Modifier.width(9.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MOTOCROSS",
+                        color = CcColors.text,
+                        fontWeight = FontWeight.Black,
+                        fontSize = if (compactHeader) 16.sp else 18.sp,
+                        letterSpacing = 2.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (compactHeader) {
+                            "USTLABS  ·  ${OemGaugeCatalog.allModels.size} OEM CLUSTERS"
+                        } else {
+                            "USTLABS  ·  CONTROL CENTER  ·  ${OemGaugeCatalog.allModels.size} OEM CLUSTERS  ·  VIRTUAL ECU"
+                        },
+                        color = CcColors.muted,
+                        fontSize = 9.5.sp,
+                        letterSpacing = 0.8.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (!compactHeader) {
+                    Spacer(Modifier.width(8.dp))
+                    ActiveBikeBadge(activeBike, language)
+                    Spacer(Modifier.width(10.dp))
+                } else {
+                    Spacer(Modifier.width(8.dp))
+                }
+                Surface(
+                    color = Color(0xFF2A0E12),
+                    shape = RoundedCornerShape(9.dp),
+                    border = BorderStroke(1.dp, CcColors.red.copy(alpha = 0.55f)),
+                    modifier = Modifier.clickable { onClose() }
+                ) {
+                    Text(
+                        text = "✕  " + LocalizationManager.getString(StringKey.ACTION_RETURN_CLUSTER, language),
+                        color = Color(0xFFFF8A80),
+                        fontSize = if (compactHeader) 11.sp else 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = if (compactHeader) 11.dp else 14.dp, vertical = 10.dp)
+                    )
+                }
             }
-        }
+            if (compactHeader) {
+                Spacer(Modifier.height(7.dp))
+                ActiveBikeBadge(activeBike, language, Modifier.fillMaxWidth())
+            }
 
         Spacer(Modifier.height(11.dp))
 
@@ -278,11 +310,11 @@ private fun ControlCenterHeader(
                     "🏍  " + LocalizationManager.getString(StringKey.MENU_MY_GARAGE, language)
                         .substringBefore(" ("),
                     "🎨  " + LocalizationManager.getString(StringKey.MENU_DASHBOARD_GALLERY, language)
-                        .substringBefore(" (") + " · 270",
+                        .substringBefore(" (") + " · ${OemGaugeCatalog.allModels.size}",
                     "⚙  " + LocalizationManager.getString(StringKey.MENU_SETTINGS, language),
                     "🏁  " + LocalizationManager.getString(StringKey.MENU_TRIP_TELEMETRY, language)
                         .substringBefore(" &"),
-                    "🎛  SİMÜLATÖR"
+                    "🎛  " + LocalizationManager.getString(StringKey.MENU_SIMULATOR, language)
                 )
                 itemsIndexed(tabs) { index, title ->
                     val selected = tab == index
@@ -309,12 +341,17 @@ private fun ControlCenterHeader(
             }
         }
     }
+    }
 }
 
 @Composable
-private fun ActiveBikeBadge(bike: BikeMechanicalProfile) {
+private fun ActiveBikeBadge(
+    bike: BikeMechanicalProfile,
+    language: AppLanguage,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(9.dp))
             .background(
                 Brush.horizontalGradient(
@@ -333,7 +370,7 @@ private fun ActiveBikeBadge(bike: BikeMechanicalProfile) {
         Spacer(Modifier.width(7.dp))
         Column {
             Text(
-                text = "AKTİF MOTOR",
+                text = LocalizationManager.getString(StringKey.LABEL_ACTIVE_BIKE, language),
                 color = CcColors.green.copy(alpha = 0.85f),
                 fontSize = 7.5.sp,
                 letterSpacing = 1.1.sp,
@@ -346,7 +383,7 @@ private fun ActiveBikeBadge(bike: BikeMechanicalProfile) {
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 230.dp)
+                modifier = Modifier.widthIn(max = 260.dp)
             )
         }
     }
@@ -500,17 +537,9 @@ private fun GarageTab(
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        // -----------------------------------------------------------------
-        // Sol: garaj listesi
-        // -----------------------------------------------------------------
+    val bikeListPane: @Composable (Modifier) -> Unit = { paneModifier ->
         Column(
-            modifier = Modifier
-                .weight(0.38f)
-                .fillMaxHeight()
+            modifier = paneModifier
         ) {
             CcTextField(
                 value = query,
@@ -613,14 +642,11 @@ private fun GarageTab(
                 }
             }
         }
+    }
 
-        // -----------------------------------------------------------------
-        // Sağ: seçili motorun tam mekanik editörü
-        // -----------------------------------------------------------------
+    val bikeEditorPane: @Composable (Modifier) -> Unit = { paneModifier ->
         LazyColumn(
-            modifier = Modifier
-                .weight(0.62f)
-                .fillMaxHeight(),
+            modifier = paneModifier,
             verticalArrangement = Arrangement.spacedBy(9.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
@@ -948,6 +974,26 @@ private fun GarageTab(
             }
         }
     }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (maxWidth < 680.dp) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                bikeListPane(Modifier.fillMaxWidth().height(230.dp))
+                bikeEditorPane(Modifier.fillMaxWidth().weight(1f))
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                bikeListPane(Modifier.weight(0.38f).fillMaxHeight())
+                bikeEditorPane(Modifier.weight(0.62f).fillMaxHeight())
+            }
+        }
+    }
 }
 
 @Composable
@@ -977,6 +1023,8 @@ private fun GarageField(
 @Composable
 private fun GalleryTab(
     prefs: ClusterPreferences,
+    activeBike: BikeMechanicalProfile,
+    session: RideSessionState,
     language: AppLanguage,
     onSelectGauge: (Int) -> Unit,
     onToggleFavorite: (String) -> Unit
@@ -1049,7 +1097,7 @@ private fun GalleryTab(
             ) {
                 item {
                     CcChip(
-                        text = "TÜMÜ",
+                        text = LocalizationManager.getString(StringKey.LABEL_ALL, language),
                         selected = category == null,
                         onClick = { category = null }
                     )
@@ -1063,7 +1111,7 @@ private fun GalleryTab(
                 }
             }
             Text(
-                text = "${filtered.size} / 270",
+                text = "${filtered.size} / ${OemGaugeCatalog.allModels.size}",
                 color = CcColors.muted,
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace
@@ -1084,6 +1132,10 @@ private fun GalleryTab(
                 val favorite = prefs.favoriteSkinIds.contains(spec.skinId)
                 GalleryCard(
                     spec = spec,
+                    prefs = prefs,
+                    activeBike = activeBike,
+                    session = session,
+                    language = language,
                     selected = selected,
                     favorite = favorite,
                     onSelect = { onSelectGauge(spec.modelNumber - 1) },
@@ -1097,12 +1149,18 @@ private fun GalleryTab(
 @Composable
 private fun GalleryCard(
     spec: DeclarativeGaugeSpec,
+    prefs: ClusterPreferences,
+    activeBike: BikeMechanicalProfile,
+    session: RideSessionState,
+    language: AppLanguage,
     selected: Boolean,
     favorite: Boolean,
     onSelect: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
-    val demo = remember(spec.skinId) { demoTelemetryFor(spec) }
+    val demo = remember(spec.skinId, prefs.fuelLevelRatio) {
+        demoTelemetryFor(spec).copy(fuelLevelRatio = prefs.fuelLevelRatio)
+    }
     Surface(
         color = if (selected) Color(0xFF241708) else CcColors.panel,
         shape = RoundedCornerShape(16.dp),
@@ -1125,14 +1183,28 @@ private fun GalleryCard(
                     spec = spec,
                     subModeIndex = 0,
                     telemetry = demo,
-                    rpmScalingMode = RpmScalingMode.MODE_A_PROPORTIONAL_REDLINE,
-                    wheelieDisplayMode = WheelieGaugeDisplayMode.ALWAYS_VISIBLE,
-                    useMph = false,
+                    rpmScalingMode = prefs.rpmScalingMode,
+                    wheelieDisplayMode = prefs.wheelieDisplayMode,
+                    useMph = prefs.useMph,
+                    useFahrenheit = prefs.useFahrenheit,
+                    clock24h = prefs.clock24h,
+                    fuelUnitCode = prefs.fuelUnitCode,
                     chromaKeyGreenScreen = false,
                     oledPixelShiftOffset = androidx.compose.ui.geometry.Offset.Zero,
-                    language = AppLanguage.TR,
-                    tripKm = 181.4,
-                    odometerKm = 1420.5,
+                    language = language,
+                    tripKm = session.tripAKm,
+                    odometerKm = session.odometerKm,
+                    sessionKm = session.sessionKm,
+                    tripBKm = session.tripBKm,
+                    showStatusRail = prefs.showStatusRail,
+                    activeBike = activeBike,
+                    best0to60Sec = session.best0to60Sec,
+                    best0to100Sec = session.best0to100Sec,
+                    peakSpeedKmh = session.peakSpeedKmh,
+                    peakLeanLeftDeg = session.peakLeanLeftDeg,
+                    peakLeanRightDeg = session.peakLeanRightDeg,
+                    avgSpeedKmh = session.avgSpeedKmh,
+                    rideTimeSeconds = session.rideTimeSeconds,
                     modifier = Modifier.fillMaxSize()
                 )
                 Row(
@@ -1237,6 +1309,8 @@ private fun GalleryCard(
 @Composable
 private fun SettingsTab(
     prefs: ClusterPreferences,
+    session: RideSessionState,
+    useMph: Boolean,
     onPrefsChange: (transform: (ClusterPreferences) -> ClusterPreferences) -> Unit,
     telemetry: UnifiedTelemetryState,
     language: AppLanguage,
@@ -1247,6 +1321,11 @@ private fun SettingsTab(
 ) {
     var confirmGarageReset by remember { mutableStateOf(false) }
     var confirmOdometerReset by remember { mutableStateOf(false) }
+    var confirmTripsReset by remember { mutableStateOf(false) }
+    var confirmDragPeaksReset by remember { mutableStateOf(false) }
+    var odoInputText by remember(session.odometerKm, useMph) {
+        mutableStateOf(DistanceFormatter.numeric(session.odometerKm, useMph, 1))
+    }
     var query by remember { mutableStateOf("") }
 
     LazyColumn(
@@ -1495,6 +1574,18 @@ private fun SettingsTab(
                         checked = prefs.ignitionSweepEnabled,
                         onChange = { v -> onPrefsChange { it.copy(ignitionSweepEnabled = v) } }
                     )
+                    CcSwitchRow(
+                        title = "Üst durum şeridi (Status Rail)",
+                        description = "GPS, eğim/wheelie ve canlı özet şeridini kadran üstünde gösterir; saf OEM görünüm için kapatın",
+                        checked = prefs.showStatusRail,
+                        onChange = { v -> onPrefsChange { it.copy(showStatusRail = v) } }
+                    )
+                    CcChoiceRow(
+                        title = "Ekran yönü",
+                        options = listOf("Otomatik", "Yatay", "Dikey"),
+                        selectedIndex = prefs.screenOrientationMode.coerceIn(0, 2),
+                        onSelect = { mode -> onPrefsChange { it.copy(screenOrientationMode = mode) } }
+                    )
                 }
             }
         }
@@ -1554,8 +1645,22 @@ private fun SettingsTab(
                         checked = prefs.shiftBeepEnabled,
                         onChange = { v -> onPrefsChange { it.copy(shiftBeepEnabled = v) } }
                     )
+                    CcSliderRow(
+                        title = "Shift bip ses seviyesi",
+                        valueLabel = "%${prefs.shiftBeepVolume}",
+                        value = prefs.shiftBeepVolume.toFloat(),
+                        range = 0f..100f,
+                        onChange = { v ->
+                            val vol = v.roundToInt().coerceIn(0, 100)
+                            com.oemcluster.pro.runtime.ShiftBeeper.setVolume(vol)
+                            onPrefsChange { it.copy(shiftBeepVolume = vol) }
+                        }
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CcSmallButton("Bip sesini dene", onClick = { com.oemcluster.pro.runtime.ShiftBeeper.test() })
+                        CcSmallButton("Bip sesini dene", onClick = {
+                            com.oemcluster.pro.runtime.ShiftBeeper.setVolume(prefs.shiftBeepVolume)
+                            com.oemcluster.pro.runtime.ShiftBeeper.test()
+                        })
                     }
                 }
             }
@@ -1587,6 +1692,37 @@ private fun SettingsTab(
                         description = "JDM göstergelerde olduğu gibi 299 üzerini sabitler",
                         checked = prefs.japan299Lock,
                         onChange = { v -> onPrefsChange { it.copy(japan299Lock = v) } }
+                    )
+                }
+            }
+        }
+
+        settingsItem(visible = matchesQuery(query, "yakit fuel tank seviye level menzil range gps gnss deadband durma hata accuracy filter filtre")) {
+            CcPanel(
+                title = "⛽  YAKIT DEPOSU & GNSS HIZ FİLTRESİ",
+                subtitle = "Canlı depo seviyesi, menzil hesabı ve GPS durma/hata eşikleri"
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CcSliderRow(
+                        title = "Depo yakıt seviyesi",
+                        valueLabel = "%${(prefs.fuelLevelRatio * 100).roundToInt()}",
+                        value = prefs.fuelLevelRatio,
+                        range = 0.02f..1.0f,
+                        onChange = { v -> onPrefsChange { it.copy(fuelLevelRatio = v.coerceIn(0.02f, 1.0f)) } }
+                    )
+                    CcSliderRow(
+                        title = "GNSS durma eşiği (Deadband / ZUPT)",
+                        valueLabel = "${String.format(Locale.US, "%.1f", prefs.stationaryDeadbandKmh)} km/h",
+                        value = prefs.stationaryDeadbandKmh,
+                        range = 0.5f..5.0f,
+                        onChange = { v -> onPrefsChange { it.copy(stationaryDeadbandKmh = v.coerceIn(0.5f, 5.0f)) } }
+                    )
+                    CcSliderRow(
+                        title = "Maks. izin verilen GPS yatay hatası",
+                        valueLabel = "${prefs.maxAllowedGpsErrorMeters.roundToInt()} m",
+                        value = prefs.maxAllowedGpsErrorMeters,
+                        range = 10f..80f,
+                        onChange = { v -> onPrefsChange { it.copy(maxAllowedGpsErrorMeters = v.coerceIn(10f, 80f)) } }
                     )
                 }
             }
@@ -1649,7 +1785,7 @@ private fun SettingsTab(
                     }
                     Text(
                         text = "Geliştirici: USTlabs  ·  MotoCross 1.0.5-PRO\n" +
-                            "270 OEM gösterge  ·  15 durumlu EKF  ·  C++20 NDK  ·  400 Hz IMU / 120 Hz render",
+                            "${OemGaugeCatalog.allModels.size} OEM gösterge  ·  ${OemGaugeCatalog.allBrands.size} marka  ·  15 durumlu EKF  ·  C++20 NDK  ·  400 Hz IMU / 120 Hz render",
                         color = CcColors.muted,
                         fontSize = 10.sp,
                         lineHeight = 15.sp
@@ -1706,69 +1842,169 @@ private fun SettingsTab(
                         }
                     }
                     Text(
-                        text = "USTlabs  ·  MotoCross 1.0.5-PRO  ·  270 OEM gösterge  ·  15 durumlu EKF  ·  C++20 NDK  ·  400 Hz IMU / 120 Hz render",
+                        text = "USTlabs  ·  MotoCross 1.0.5-PRO  ·  ${OemGaugeCatalog.allModels.size} OEM gösterge  ·  15 durumlu EKF  ·  C++20 NDK  ·  400 Hz IMU / 120 Hz render",
                         color = CcColors.muted,
                         fontSize = 10.sp
                     )
                 }
             }
         }
-        settingsItem(visible = matchesQuery(query, "odometer sayac kilometre km sifirla reset kalici total trip")) {
+        settingsItem(visible = matchesQuery(query, "odometer odo sayac kilometre km sifirla reset kalici total trip drag rekor peak yaz set")) {
             CcPanel(
-                title = "🛣️  KALICI SAYAÇ",
-                subtitle = "Toplam kilometre göstergesi (uygulama kapansa bile korunur)"
+                title = "🛣️  KALICI SAYAÇ & SÜRÜŞ VERİLERİ",
+                subtitle = "Odometreyi manuel ayarlayın veya trip / drag rekorlarını sıfırlayın"
             ) {
-                if (!confirmOdometerReset) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Odometreyi sıfırla",
-                                color = CcColors.text,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "Toplam km göstergesi 0 km'e döner; trip ve rekorlar korunur.",
-                                color = CcColors.muted,
-                                fontSize = 10.sp,
-                                lineHeight = 13.sp
-                            )
-                        }
-                        CcSmallButton("SIFIRLA", onClick = { confirmOdometerReset = true }, danger = true)
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(7.dp))
-                            .background(Color(0xFF2A0E12))
-                            .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            "Kalıcı sayaç 0 km'e dönecek. Emin misiniz?",
-                            color = Color(0xFFFF8A80),
-                            fontSize = 11.sp,
+                        CcTextField(
+                            value = odoInputText,
+                            onValueChange = { odoInputText = it },
+                            placeholder = if (useMph) "Örn: 12500.0 mi" else "Örn: 12500.0 km",
                             modifier = Modifier.weight(1f)
                         )
                         Button(
                             onClick = {
-                                confirmOdometerReset = false
-                                onResetOdometer()
+                                val parsed = odoInputText.trim().replace(',', '.').toDoubleOrNull()
+                                if (parsed != null && parsed >= 0.0) {
+                                    val kmVal = if (useMph) parsed / 0.621371 else parsed
+                                    session.setOdometerKm(kmVal)
+                                    session.pushToPrefs()
+                                    onPrefsChange { it.copy(odometerKm = kmVal) }
+                                }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = CcColors.red),
-                            shape = RoundedCornerShape(6.dp)
-                        ) { Text("SIFIRLA", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                        Button(
-                            onClick = { confirmOdometerReset = false },
-                            colors = ButtonDefaults.buttonColors(containerColor = CcColors.panel2),
-                            shape = RoundedCornerShape(6.dp)
-                        ) { Text("VAZGEÇ", color = CcColors.muted, fontSize = 11.sp) }
+                            colors = ButtonDefaults.buttonColors(containerColor = CcColors.cyan),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 13.dp, vertical = 10.dp)
+                        ) {
+                            Text("ODO YAZ", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                    Text(
+                        text = "Güncel toplam: ${DistanceFormatter.format(session.odometerKm, useMph, 1)}  ·  Trip A: ${DistanceFormatter.format(session.tripAKm, useMph, 1)}  ·  Trip B: ${DistanceFormatter.format(session.tripBKm, useMph, 1)}",
+                        color = CcColors.muted,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CcSmallButton(
+                            text = "TRIP A/B SIFIRLA",
+                            onClick = { confirmTripsReset = true; confirmOdometerReset = false; confirmDragPeaksReset = false }
+                        )
+                        CcSmallButton(
+                            text = "0–60 / 0–100 REKOR SIFIRLA",
+                            onClick = { confirmDragPeaksReset = true; confirmOdometerReset = false; confirmTripsReset = false }
+                        )
+                        CcSmallButton(
+                            text = "ODO SIFIRLA",
+                            onClick = { confirmOdometerReset = true; confirmTripsReset = false; confirmDragPeaksReset = false },
+                            danger = true
+                        )
+                    }
+                    if (confirmOdometerReset) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(Color(0xFF2A0E12))
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "Kalıcı sayaç 0 km'e dönecek. Emin misiniz?",
+                                color = Color(0xFFFF8A80),
+                                fontSize = 11.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                onClick = {
+                                    confirmOdometerReset = false
+                                    onResetOdometer()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CcColors.red),
+                                shape = RoundedCornerShape(6.dp)
+                            ) { Text("SIFIRLA", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            Button(
+                                onClick = { confirmOdometerReset = false },
+                                colors = ButtonDefaults.buttonColors(containerColor = CcColors.panel2),
+                                shape = RoundedCornerShape(6.dp)
+                            ) { Text("VAZGEÇ", color = CcColors.muted, fontSize = 11.sp) }
+                        }
+                    }
+                    if (confirmTripsReset) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(Color(0xFF1A1E29))
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "Trip A ve Trip B sayaçları sıfırlansın mı?",
+                                color = CcColors.text,
+                                fontSize = 11.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                onClick = {
+                                    confirmTripsReset = false
+                                    session.resetTripA()
+                                    session.resetTripB()
+                                    session.pushToPrefs()
+                                    onPrefsChange { it.copy(tripAKm = 0.0, tripBKm = 0.0) }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CcColors.orange),
+                                shape = RoundedCornerShape(6.dp)
+                            ) { Text("SIFIRLA", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            Button(
+                                onClick = { confirmTripsReset = false },
+                                colors = ButtonDefaults.buttonColors(containerColor = CcColors.panel2),
+                                shape = RoundedCornerShape(6.dp)
+                            ) { Text("VAZGEÇ", color = CcColors.muted, fontSize = 11.sp) }
+                        }
+                    }
+                    if (confirmDragPeaksReset) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(Color(0xFF2A0E12))
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "Tüm 0–60, 0–100, 0–200, 1/4 mil ve tepe değer rekorları sıfırlansın mı?",
+                                color = Color(0xFFFF8A80),
+                                fontSize = 11.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                onClick = {
+                                    confirmDragPeaksReset = false
+                                    session.resetDragRecords()
+                                    session.resetPeaks()
+                                    session.pushToPrefs()
+                                    onPrefsChange { it }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CcColors.red),
+                                shape = RoundedCornerShape(6.dp)
+                            ) { Text("SIFIRLA", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                            Button(
+                                onClick = { confirmDragPeaksReset = false },
+                                colors = ButtonDefaults.buttonColors(containerColor = CcColors.panel2),
+                                shape = RoundedCornerShape(6.dp)
+                            ) { Text("VAZGEÇ", color = CcColors.muted, fontSize = 11.sp) }
+                        }
                     }
                 }
             }
@@ -1890,6 +2126,9 @@ private fun RideDataTab(
     // rideRevision, 2 Hz'lik sayaç yenilemesini bu ekrana bağlar.
     val revision = rideRevision
 
+    val speedFactor = if (useMph) 0.621371 else 1.0
+    val speedUnit = if (useMph) "mph" else "km/h"
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1900,13 +2139,16 @@ private fun RideDataTab(
                 title = "📡  CANLI TELEMETRİ",
                 subtitle = "${activeBike.brand} ${activeBike.modelName}  ·  ${activeBike.engineConfig.displayName}"
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CcStatTile("HIZ", "${telemetry.displayedSpeedKmh.roundToInt()}", "km/h", CcColors.orange, Modifier.weight(1f))
-                    CcStatTile("VİTES", telemetry.gearDisplayString, if (telemetry.isClutchPulled) "DEBRİYAJ" else "", CcColors.cyan, Modifier.weight(1f))
-                    CcStatTile("DEVİR", "${telemetry.actualEngineRpm.roundToInt()}", "RPM", CcColors.red, Modifier.weight(1f))
-                    CcStatTile("YATIŞ", "${telemetry.leanAngleDeg.roundToInt()}", "°", CcColors.green, Modifier.weight(1f))
-                    CcStatTile("BEYGİR", "${telemetry.estimatedWheelHorsepower.roundToInt()}", "whp", CcColors.gold, Modifier.weight(1f))
-                }
+                CcStatGrid(
+                    items = listOf(
+                        CcStatSpec("HIZ", "${(telemetry.displayedSpeedKmh * speedFactor).roundToInt()}", speedUnit, CcColors.orange),
+                        CcStatSpec("VİTES", telemetry.gearDisplayString, if (telemetry.isClutchPulled) "DEBRİYAJ" else "", CcColors.cyan),
+                        CcStatSpec("DEVİR", "${telemetry.actualEngineRpm.roundToInt()}", "RPM", CcColors.red),
+                        CcStatSpec("YATIŞ", "${telemetry.leanAngleDeg.roundToInt()}", "°", CcColors.green),
+                        CcStatSpec("BEYGİR", "${telemetry.estimatedWheelHorsepower.roundToInt()}", "whp", CcColors.gold)
+                    ),
+                    portraitColumns = 3
+                )
             }
         }
 
@@ -1915,14 +2157,17 @@ private fun RideDataTab(
                 title = "🧭  YOL BİLGİSAYARI",
                 subtitle = "Seans sayaçları uygulama kapansa da korunur"
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CcStatTile("TRIP A", DistanceFormatter.numeric(session.tripAKm, useMph, 2), DistanceFormatter.unit(useMph), CcColors.cyan, Modifier.weight(1f))
-                    CcStatTile("TRIP B", DistanceFormatter.numeric(session.tripBKm, useMph, 2), DistanceFormatter.unit(useMph), CcColors.cyan, Modifier.weight(1f))
-                    CcStatTile("SESA", DistanceFormatter.numeric(session.sessionKm, useMph, 2), DistanceFormatter.unit(useMph), CcColors.orange, Modifier.weight(1f))
-                    CcStatTile("ODOMETER", DistanceFormatter.numeric(session.odometerKm, useMph, 1), DistanceFormatter.unit(useMph), CcColors.text, Modifier.weight(1f))
-                    CcStatTile("ORT. HIZ", String.format(Locale.US, "%.1f", session.avgSpeedKmh), "km/h", CcColors.green, Modifier.weight(1f))
-                    CcStatTile("SÜRE", formatDuration(session.rideTimeSeconds), "", CcColors.muted, Modifier.weight(1f))
-                }
+                CcStatGrid(
+                    items = listOf(
+                        CcStatSpec("TRIP A", DistanceFormatter.numeric(session.tripAKm, useMph, 2), DistanceFormatter.unit(useMph), CcColors.cyan),
+                        CcStatSpec("TRIP B", DistanceFormatter.numeric(session.tripBKm, useMph, 2), DistanceFormatter.unit(useMph), CcColors.cyan),
+                        CcStatSpec("SEANS", DistanceFormatter.numeric(session.sessionKm, useMph, 2), DistanceFormatter.unit(useMph), CcColors.orange),
+                        CcStatSpec("ODOMETER", DistanceFormatter.numeric(session.odometerKm, useMph, 1), DistanceFormatter.unit(useMph), CcColors.text),
+                        CcStatSpec("ORT. HIZ", String.format(Locale.US, "%.1f", session.avgSpeedKmh * speedFactor), speedUnit, CcColors.green),
+                        CcStatSpec("SÜRE", formatDuration(session.rideTimeSeconds), "", CcColors.muted)
+                    ),
+                    portraitColumns = 3
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CcSmallButton("TRIP A SIFIRLA", onResetTripA)
@@ -1936,19 +2181,19 @@ private fun RideDataTab(
                 title = "🏆  TEPE DEĞERLER",
                 subtitle = "Bu motosiklet profiliyle kaydedilen en yüksek değerler"
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CcStatTile("MAKS HIZ", "${session.peakSpeedKmh.roundToInt()}", "km/h", CcColors.orange, Modifier.weight(1f))
-                    CcStatTile("MAKS DEVİR", "${session.peakRpm.roundToInt()}", "RPM", CcColors.red, Modifier.weight(1f))
-                    CcStatTile("SOL YATIŞ", "${session.peakLeanLeftDeg.roundToInt()}", "°", CcColors.cyan, Modifier.weight(1f))
-                    CcStatTile("SAĞ YATIŞ", "${session.peakLeanRightDeg.roundToInt()}", "°", CcColors.cyan, Modifier.weight(1f))
-                    CcStatTile("TEKER AÇI", "${session.peakWheelieDeg.roundToInt()}", "°", CcColors.green, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CcStatTile("EN UZUN TEKER", String.format(Locale.US, "%.2f", session.longestWheelieSec), "s", CcColors.green, Modifier.weight(1f))
-                    CcStatTile("TEKER MESAFESİ", String.format(Locale.US, "%.1f", session.longestWheelieMeters), "m", CcColors.green, Modifier.weight(1f))
-                    CcStatTile("VİTES GÜVENİ", "${(telemetry.gearConfidence * 100).roundToInt()}", "%", CcColors.gold, Modifier.weight(1f))
-                }
+                CcStatGrid(
+                    items = listOf(
+                        CcStatSpec("MAKS HIZ", "${(session.peakSpeedKmh * speedFactor).roundToInt()}", speedUnit, CcColors.orange),
+                        CcStatSpec("MAKS DEVİR", "${session.peakRpm.roundToInt()}", "RPM", CcColors.red),
+                        CcStatSpec("SOL YATIŞ", "${session.peakLeanLeftDeg.roundToInt()}", "°", CcColors.cyan),
+                        CcStatSpec("SAĞ YATIŞ", "${session.peakLeanRightDeg.roundToInt()}", "°", CcColors.cyan),
+                        CcStatSpec("TEKER AÇI", "${session.peakWheelieDeg.roundToInt()}", "°", CcColors.green),
+                        CcStatSpec("EN UZUN TEKER", String.format(Locale.US, "%.2f", session.longestWheelieSec), "s", CcColors.green),
+                        CcStatSpec("TEKER MESAFESİ", String.format(Locale.US, "%.1f", session.longestWheelieMeters), "m", CcColors.green),
+                        CcStatSpec("VİTES GÜVENİ", "${(telemetry.gearConfidence * 100).roundToInt()}", "%", CcColors.gold)
+                    ),
+                    portraitColumns = 3
+                )
                 Spacer(Modifier.height(8.dp))
                 CcSmallButton("TEPE DEĞERLERİ SIFIRLA", onResetPeaks, danger = true)
             }
@@ -1957,7 +2202,7 @@ private fun RideDataTab(
         item {
             CcPanel(
                 title = "🏁  DRAG BOX",
-                subtitle = "Duruştan otomatik ölçüm: 0–100, 0–200 ve çeyrek mil"
+                subtitle = "Duruştan otomatik ölçüm: 0–60, 0–100, 0–200 ve çeyrek mil"
             ) {
                 if (session.dragActive) {
                     Row(
@@ -1981,6 +2226,13 @@ private fun RideDataTab(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CcStatTile(
+                        "0–60 KM/H",
+                        if (session.best0to60Sec > 0) String.format(Locale.US, "%.2f", session.best0to60Sec) else "—",
+                        "s",
+                        CcColors.gold,
+                        Modifier.weight(1f)
+                    )
+                    CcStatTile(
                         "0–100 KM/H",
                         if (session.best0to100Sec > 0) String.format(Locale.US, "%.2f", session.best0to100Sec) else "—",
                         "s",
@@ -1994,11 +2246,21 @@ private fun RideDataTab(
                         CcColors.red,
                         Modifier.weight(1f)
                     )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CcStatTile(
                         "1/4 MİL",
                         if (session.bestQuarterMileSec > 0) String.format(Locale.US, "%.2f", session.bestQuarterMileSec) else "—",
                         "s",
                         CcColors.gold,
+                        Modifier.weight(1f)
+                    )
+                    CcStatTile(
+                        "SON 0–60",
+                        if (session.last0to60Sec > 0) String.format(Locale.US, "%.2f", session.last0to60Sec) else "—",
+                        "s",
+                        CcColors.cyan,
                         Modifier.weight(1f)
                     )
                     CcStatTile(
@@ -2065,7 +2327,9 @@ private fun SimulatorTab(
     simulation: SimulationController,
     activeBike: BikeMechanicalProfile,
     spec: DeclarativeGaugeSpec,
-    prefs: ClusterPreferences
+    prefs: ClusterPreferences,
+    session: RideSessionState,
+    language: AppLanguage
 ) {
     // Sekme açıkken 10 Hz canlı önizleme; kadranın aynısı, aynı telemetri.
     val preview by produceState(
@@ -2078,12 +2342,12 @@ private fun SimulatorTab(
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val speedFactor = if (prefs.useMph) 0.621371 else 1.0
+    val speedUnit = if (prefs.useMph) "mph" else "km/h"
+
+    val controlsColumn: @Composable (Modifier) -> Unit = { colMod ->
         Column(
-            modifier = Modifier.weight(1.05f).fillMaxHeight(),
+            modifier = colMod.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(9.dp)
         ) {
             CcPanel(
@@ -2100,12 +2364,15 @@ private fun SimulatorTab(
                     )
                     CcSliderRow(
                         title = "Hız",
-                        valueLabel = "${simulation.speedKmh.roundToInt()} km/h",
+                        valueLabel = "${(simulation.speedKmh * speedFactor).roundToInt()} $speedUnit",
                         value = simulation.speedKmh,
                         range = 0f..320f,
                         onChange = { simulation.setSpeed(it) }
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
                         for (g in 0..8) {
                             CcGearButton(
                                 label = if (g == 0) "N" else "$g",
@@ -2159,9 +2426,11 @@ private fun SimulatorTab(
                 )
             }
         }
+    }
 
+    val previewColumn: @Composable (Modifier) -> Unit = { colMod ->
         Column(
-            modifier = Modifier.weight(0.95f).fillMaxHeight(),
+            modifier = colMod,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
@@ -2181,24 +2450,95 @@ private fun SimulatorTab(
                 OemClusterCanvasRenderer(
                     spec = spec,
                     subModeIndex = prefs.selectedSubModeIndex,
-                    telemetry = preview,
+                    telemetry = preview.copy(fuelLevelRatio = prefs.fuelLevelRatio),
                     rpmScalingMode = prefs.rpmScalingMode,
-                    wheelieDisplayMode = WheelieGaugeDisplayMode.ALWAYS_VISIBLE,
+                    wheelieDisplayMode = prefs.wheelieDisplayMode,
                     useMph = prefs.useMph,
                     useFahrenheit = prefs.useFahrenheit,
+                    clock24h = prefs.clock24h,
+                    fuelUnitCode = prefs.fuelUnitCode,
                     chromaKeyGreenScreen = false,
                     oledPixelShiftOffset = androidx.compose.ui.geometry.Offset.Zero,
-                    language = AppLanguage.TR,
-                    tripKm = 181.4,
-                    odometerKm = 1420.5,
+                    language = language,
+                    tripKm = session.tripAKm,
+                    odometerKm = session.odometerKm,
+                    sessionKm = session.sessionKm,
+                    tripBKm = session.tripBKm,
+                    showStatusRail = prefs.showStatusRail,
+                    activeBike = activeBike,
+                    best0to60Sec = session.best0to60Sec,
+                    best0to100Sec = session.best0to100Sec,
+                    peakSpeedKmh = session.peakSpeedKmh,
+                    peakLeanLeftDeg = session.peakLeanLeftDeg,
+                    peakLeanRightDeg = session.peakLeanRightDeg,
+                    avgSpeedKmh = session.avgSpeedKmh,
+                    rideTimeSeconds = session.rideTimeSeconds,
                     modifier = Modifier.fillMaxSize()
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CcStatTile("HIZ", "${preview.displayedSpeedKmh.roundToInt()}", if (prefs.useMph) "mph" else "km/h", CcColors.orange, Modifier.weight(1f))
+                CcStatTile(
+                    "HIZ",
+                    "${(preview.displayedSpeedKmh * speedFactor).roundToInt()}",
+                    speedUnit,
+                    CcColors.orange,
+                    Modifier.weight(1f)
+                )
                 CcStatTile("VİTES", preview.gearDisplayString, "", CcColors.cyan, Modifier.weight(1f))
                 CcStatTile("DEVİR", "${preview.actualEngineRpm.roundToInt()}", "RPM", CcColors.red, Modifier.weight(1f))
                 CcStatTile("SHIFT", preview.shiftLightState.shortLabel(), "", CcColors.green, Modifier.weight(1f))
+            }
+        }
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        if (maxWidth < 680.dp) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                previewColumn(Modifier.fillMaxWidth().height(255.dp))
+                controlsColumn(Modifier.fillMaxWidth().weight(1f))
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                controlsColumn(Modifier.weight(1.05f).fillMaxHeight())
+                previewColumn(Modifier.weight(0.95f).fillMaxHeight())
+            }
+        }
+    }
+}
+
+private data class CcStatSpec(
+    val label: String,
+    val value: String,
+    val unit: String,
+    val color: Color
+)
+
+@Composable
+private fun CcStatGrid(
+    items: List<CcStatSpec>,
+    portraitColumns: Int = 3
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val cols = if (maxWidth < 580.dp) portraitColumns else items.size.coerceAtLeast(1)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.chunked(cols).forEach { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowItems.forEach { item ->
+                        CcStatTile(item.label, item.value, item.unit, item.color, Modifier.weight(1f))
+                    }
+                    repeat(cols - rowItems.size) {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
@@ -2628,14 +2968,15 @@ private fun settingsSectionVisible(query: String): Boolean =
         "canli durum live hiz hiz kilometre devir rpm vites gear gnss uydu telemetry",
         "dil language idioma langue sprache lingua turkce english espanol italiano francais deutsch portugais russo chinese",
         "birim units mph kmh sicaklik temperature fahrenheit celsius saat clock 12 24 yakit fuel mpg l100 l100km kml",
-        "ekran display tema theme gunduz gece day night oled rpm yatis teker wheelie parlaklik",
-        "shift light gear vites stage evre optimal ecu beep bip",
+        "ekran display tema theme gunduz gece day night oled rpm yatis teker wheelie parlaklik status rail serit yon portrait landscape orientation",
+        "shift light gear vites stage evre optimal ecu beep bip volume ses",
         "hiz speed kalibrasyon calibration ece r39 oem 299 japan",
+        "yakit fuel tank seviye level menzil range gps gnss deadband durma hata accuracy filter filtre",
         "sifirla zero yatis kalibrasyon imu",
         "gnss uydu satellite sensor imu",
         "uygulama app ustlabs ust labs launch acilis animasyon",
         "garaj garage fabrika factory sifirla reset",
-        "odometer sayac kilometre km sifirla reset kalici"
+        "odometer odo sayac kilometre km sifirla reset kalici total trip drag rekor peak yaz set"
     ).any { matchesQuery(query, it) }
 
 private fun LazyListScope.settingsItem(

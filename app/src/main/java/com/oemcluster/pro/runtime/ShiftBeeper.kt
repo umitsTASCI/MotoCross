@@ -14,10 +14,20 @@ import com.oemcluster.pro.domain.ShiftLightState
 object ShiftBeeper {
 
     private var tone: ToneGenerator? = null
+    private var currentVolume: Int = 80
+
+    fun setVolume(volumePercent: Int) {
+        val clamped = volumePercent.coerceIn(0, 100)
+        if (clamped != currentVolume) {
+            currentVolume = clamped
+            release()
+        }
+    }
 
     private fun ensureTone(): ToneGenerator? {
+        if (currentVolume <= 0) return null
         if (tone == null) {
-            tone = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 78) }.getOrNull()
+            tone = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, currentVolume) }.getOrNull()
         }
         return tone
     }
@@ -37,6 +47,7 @@ object ShiftBeeper {
     }
 
     private fun beepOnce() {
+        if (currentVolume <= 0) return
         runCatching {
             ensureTone()?.startTone(ToneGenerator.TONE_PROP_BEEP, 110)
         }

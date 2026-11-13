@@ -1,5 +1,6 @@
 package com.oemcluster.pro.ui
 
+import com.oemcluster.pro.catalog.OemGaugeCatalog
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -126,24 +127,17 @@ fun LaunchSequenceOverlay(
         LaunchBackdrop(elapsed = elapsed, master = master)
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val isPortrait = maxHeight > maxWidth * 1.05f
             val compact = maxWidth < 900.dp || maxHeight < 460.dp
-            val padH = if (compact) 28.dp else 46.dp
-            val padV = if (compact) 16.dp else 28.dp
-            val emblemSize = if (compact) 62.dp else 78.dp
-            val titleSize = if (compact) 34.sp else 45.sp
-            val titleTracking = if (compact) 5.sp else 7.sp
+            val padH = if (isPortrait) 22.dp else if (compact) 28.dp else 46.dp
+            val padV = if (isPortrait) 18.dp else if (compact) 16.dp else 28.dp
+            val emblemSize = if (isPortrait) 52.dp else if (compact) 62.dp else 78.dp
+            val titleSize = if (isPortrait) 28.sp else if (compact) 34.sp else 45.sp
+            val titleTracking = if (isPortrait) 4.sp else if (compact) 5.sp else 7.sp
 
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = padH, vertical = padV),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            val infoPanel: @Composable (Modifier) -> Unit = { colModifier ->
                 Column(
-                    modifier = Modifier
-                        .weight(1.18f)
-                        .fillMaxHeight()
-                        .alpha(master),
+                    modifier = colModifier.alpha(master),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
@@ -270,7 +264,7 @@ fun LaunchSequenceOverlay(
                         )
                         LaunchStatusLine(
                             label = "OEM SKIN LIBRARY",
-                            detail = "270 GÖSTERGE · 23 MARKA",
+                            detail = "${OemGaugeCatalog.allModels.size} GÖSTERGE · ${OemGaugeCatalog.allBrands.size} MARKA",
                             activeAt = 1.35f,
                             elapsed = elapsed,
                             dark = bootDone
@@ -319,13 +313,11 @@ fun LaunchSequenceOverlay(
                     }
                 }
 
-                Spacer(Modifier.width(if (compact) 22.dp else 34.dp))
+            }
 
+            val tachPanel: @Composable (Modifier, Modifier) -> Unit = { boxModifier, dialModifier ->
                 Box(
-                    modifier = Modifier
-                        .weight(0.82f)
-                        .fillMaxHeight()
-                        .alpha(master),
+                    modifier = boxModifier.alpha(master),
                     contentAlignment = Alignment.Center
                 ) {
                     LaunchTachometer(
@@ -333,7 +325,51 @@ fun LaunchSequenceOverlay(
                         speedKmh = speed,
                         rpm = rpm,
                         sequence = sequence,
-                        modifier = Modifier
+                        modifier = dialModifier
+                    )
+                }
+            }
+
+            if (isPortrait) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = padH, vertical = padV),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    tachPanel(
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(0.40f),
+                        Modifier
+                            .fillMaxHeight(0.92f)
+                            .aspectRatio(1f)
+                    )
+                    infoPanel(
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(0.60f)
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = padH, vertical = padV),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    infoPanel(
+                        Modifier
+                            .weight(1.18f)
+                            .fillMaxHeight()
+                    )
+                    Spacer(Modifier.width(if (compact) 22.dp else 34.dp))
+                    tachPanel(
+                        Modifier
+                            .weight(0.82f)
+                            .fillMaxHeight(),
+                        Modifier
                             .fillMaxHeight(0.94f)
                             .aspectRatio(1f)
                     )
